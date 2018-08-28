@@ -1,0 +1,5 @@
+edgar==1.0.0
+yahoo-finance==1.4.0
+numpy==1.14.0
+pandas==0.22.0
+matplotlib==2.1.2
