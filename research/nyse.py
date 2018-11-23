@@ -1,10 +1,8 @@
 import os
 import re
 import requests
-from datetime import datetime
 
 import pandas as pd
-import numpy as np
 from yahoofinancials import YahooFinancials
 
 HOME = ".."
@@ -34,22 +32,26 @@ def load():
     prices['date'] = pd.to_datetime(prices['date'], errors='coerce')  # [datetime.strptime(x[:10], '%Y-%m-%d') for x in prices['date']]
     prices_split['date'] = pd.to_datetime(prices_split['date'], errors='coerce')
 
+def is_data_loaded():
+    return securities is not None
+
 def check_existence():
-    if securities is None:
+    if not is_data_loaded():
+        print("Loading NYSE securities")
         # Module was reloaded with initialization
         load()
-    
+
 def get_name(symbol):
     check_existence()
     idx = securities.index[securities['Ticker symbol'] == symbol][0]
     return securities.loc[idx, 'Name']
-    
+
 def clean_up_securities(orig):
     cleaned = orig.copy()
     cleaned.drop('SEC filings', axis=1, inplace=True)
-    
+
     cleaned['Date first added'] = pd.to_datetime(cleaned['Date first added'], errors='coerce')
-    
+
     idx = cleaned.index[cleaned['Ticker symbol'] == 'DISCA'][0]
     cleaned.loc[idx, 'Security'] = 'Discovery Communications Class A'  # Before: Discovery Communications-A
     idx = cleaned.index[cleaned['Ticker symbol'] == 'DISCK'][0]
@@ -58,13 +60,13 @@ def clean_up_securities(orig):
     cleaned.loc[idx, 'Security'] = 'Under Armour Class C'  # Before: Under Armour
     idx = cleaned.index[cleaned['Ticker symbol'] == 'UAA'][0]
     cleaned.loc[idx, 'Security'] = 'Under Armour Class A'  # Before: Under Armour
-    
+
     columns = cleaned.columns.tolist()
     columns.insert(1, 'Name')
     regex_pat = re.compile(r'\WClass (A|B|C)$', flags=re.IGNORECASE)
     cleaned['Name'] = cleaned['Security'].str.replace(regex_pat, '')
     cleaned = cleaned[columns]  # Change order
-    
+
     return cleaned
 
 
