@@ -23,7 +23,6 @@ class NewsDataset():
         self.logger.debug('Reading news data (takes about 45 seconds)...')
         # Columns: date[datetime64[ns]], filename, content, reuters[bool]
         df_news = pd.read_csv(self.file_path, index_col=0)
-
         self._data = df_news
 
     # Return DataFrame with indexed rows and the column 'content'
