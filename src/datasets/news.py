@@ -15,6 +15,9 @@ class NewsDataset():
         self.file_path = file_path or NEWS_FILE
         self.logger = logging.getLogger(__name__)
 
+    def __str__(self) -> str:
+        return self.name
+
     def load(self):
         """Load data"""
         self.logger.debug('Reading news data (takes about 45 seconds)...')
@@ -23,6 +26,7 @@ class NewsDataset():
 
         self._data = df_news
 
+    # Return DataFrame with indexed rows and the column 'content'
     def get_articles(self):
         indexed_contents = self.data()[['content']]
         return indexed_contents

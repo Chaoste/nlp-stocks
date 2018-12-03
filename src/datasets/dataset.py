@@ -6,7 +6,7 @@ import pandas as pd
 
 class Dataset:
 
-    def __init__(self, name: str, file_name: str):
+    def __init__(self, name: str):
         self.name = name
         self._data = None
         self.logger = logging.getLogger(__name__)
