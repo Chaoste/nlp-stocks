@@ -12,12 +12,10 @@ import matplotlib.patheffects as path_effects
 from matplotlib.font_manager import FontProperties
 import numpy as np
 import pandas as pd
-import progressbar
 import time
 from sklearn.metrics import accuracy_score, fbeta_score
 from sklearn.metrics import precision_recall_fscore_support as prf
 from sklearn.metrics import roc_curve, auc
-from tabulate import tabulate
 
 from .config import init_logging
 

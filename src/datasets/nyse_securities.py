@@ -39,6 +39,10 @@ class NyseSecuritiesDataset():
         securities = self.data()
         return securities[securities['Name'] == name].iloc[0]['Ticker symbol']
 
+    def get_company_name(self, sym) -> str:
+        securities = self.data()
+        return securities[securities['Ticker symbol'] == sym].iloc[0]['Name']
+
     def get_all_company_names(self) -> (pd.DataFrame):
         return self.data()[['Ticker symbol', 'Name']].drop_duplicates('Name')
 

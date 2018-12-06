@@ -1,25 +1,53 @@
 import os
-import pickle
 import logging
 import time
 
 import matplotlib.pyplot as plt
+from IPython.display import SVG
+from keras.utils.vis_utils import model_to_dot
+from keras.utils import plot_model
 import numpy as np
-import pandas as pd
+
 
 class Plotter:
-    def __init__(self, output_dir, pickle_dirs=None, dataset_names=None, detector_names=None):
+    def __init__(self, output_dir):
         self.output_dir = output_dir
-        self.dataset_names = dataset_names
-        self.detector_names = detector_names
-        self.results = None
         self.logger = logging.getLogger(__name__)
-        if pickle_dirs is not None:
-            self.results = self.import_results_for_runs(pickle_dirs)
 
-    # --- Final plot functions ----------------------------------------------- #
+    # --- Final plot functions ---------------------------------------------- #
 
-    # --- Helper functions --------------------------------------------------- #
+    def plot_history(self, history, store=True):
+        fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+        epochs = len(history.history['loss'])
+
+        metrics = []
+        for i, label in enumerate(sorted(history.history)):
+            if label[:4] != 'val_':
+                metrics.append(label)
+                ax = axes[len(metrics)-1]
+                linestyle = None
+            else:
+                ax = axes[i-len(metrics)]
+                linestyle = 'dashed'
+            ax.plot(np.arange(1, epochs+1), history.history[label], label=label,
+                    linestyle=linestyle)
+
+        for metric, ax in zip(metrics, axes):
+            ax.set_xlabel('epoch')
+            ax.set_xlim((1, epochs))
+            ax.set_title(metric.capitalize())
+            ax.legend()
+        fig.tight_layout()
+        fig.suptitle('History of Keras Model')
+        fig.subplots_adjust(top=0.85, hspace=1, right=1, left=0)
+        if store:
+            self.store(fig, 'history', 'png')
+
+    def show_and_save_model(self, model):
+        plot_model(model, to_file=os.path.join(self.output_dir, 'model.png'))
+        return SVG(model_to_dot(model, show_shapes=True).create(prog='dot', format='svg'))
+
+    # --- Helper functions -------------------------------------------------- #
 
     def store(self, fig, title, extension='pdf', **kwargs):
         timestamp = time.strftime('%Y-%m-%d-%H%M%S')
