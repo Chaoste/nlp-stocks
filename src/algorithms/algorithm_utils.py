@@ -17,13 +17,14 @@ from keras.wrappers.scikit_learn import KerasClassifier
 
 
 class Algorithm(KerasClassifier, metaclass=abc.ABCMeta):
-    def __init__(self, module_name, name, short_name, seed, **kwargs):
+    def __init__(self, module_name, name, short_name, seed=42, can_handle_time_dim=False, **kwargs):
         super().__init__(**kwargs)
         self.logger = logging.getLogger(module_name)
         self.name = name
         self.short_name = short_name
         self.seed = seed
         self.history = None
+        self.can_handle_time_dim = can_handle_time_dim
 
         if self.seed is not None:
             random.seed(seed)
@@ -32,15 +33,16 @@ class Algorithm(KerasClassifier, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def fit(self, X, y, **kwargs):
         try:
-            self.history = super().fit(
-                X, y, verbose=0, callbacks=[TQDMNotebookCallback()], **kwargs)
+            self.history = super().fit(X, y, **kwargs)
             return self.history
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as ex:
             print(f'User Interaction: Stopped earlier!')
-            return None
+            raise ex
+            # return None
 
     @abc.abstractmethod
     def predict(self, X, **kwargs):
+        print(X.shape)
         return super().predict(X, **kwargs)
 
     def __str__(self):

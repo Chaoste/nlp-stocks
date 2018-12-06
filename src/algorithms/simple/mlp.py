@@ -2,17 +2,41 @@ import sys
 import re
 
 from tqdm import tqdm_notebook
-from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPClassifier as SKL_MLPClassifier
+
+from ..algorithm_utils import Algorithm
 
 
-class MLPClassifier(MLPClassifier):
+class MLPClassifier(Algorithm):
+    def __init__(self, *args, seed=42, epochs=100, **kwargs):
+        super().__init__('mlp', 'MLPClassifier', 'MLP', seed, can_handle_time_dim=False)
+        self._args = args
+        self._kwargs = kwargs
+        self._kwargs['random_state'] = seed
+        self._kwargs['max_iter'] = epochs
 
-    def fit(self, *args, **kwargs):
-        with MLPOutputToProgressBar(total=self.max_iter):
-            super().fit(*args, **kwargs)
+    def __call__(self):
+        model = SKL_MLPClassifier(*self._args, **self._kwargs)
+        return model
 
-    # def __getattr__(self, attr):
-    #     return getattr(self.stream, attr)
+    def fit(self, X, y, **kwargs):
+        wrapper = MLPOutputToProgressBar(total=self._kwargs['max_iter'])
+        with wrapper:
+            super().fit(X, y, **kwargs)
+        self.history = wrapper.history
+
+    def predict(self, X, **kwargs):
+        return self.model.predict(X, **kwargs)
+
+
+class History():
+    def __init__(self):
+        self.history = {
+            'loss': [],
+        }
+
+    def insert(self, loss, acc=None):
+        self.history['loss'].append(loss)
 
 
 class MLPOutputToProgressBar():
@@ -22,6 +46,7 @@ class MLPOutputToProgressBar():
                                              flags=re.IGNORECASE)
         self.print_mocker = PrintMocker(self.on_listen_predictors)
         self.was_last_input_match = False
+        self.history = History()
 
     def on_listen_predictors(self, data):
         if self.was_last_input_match:
@@ -33,6 +58,7 @@ class MLPOutputToProgressBar():
             return data
         iteration = int(match.group(1))
         loss = float(match.group(2))
+        self.history.insert(loss)
         self.tqdm_bar.set_description(f'Loss={loss:.5f}')
         self.tqdm_bar.update(iteration - self.tqdm_bar.n)
         self.was_last_input_match = True

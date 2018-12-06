@@ -2,13 +2,13 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense
 from keras.utils import np_utils
 
-from ..algorithm_utils import Algorithm
+from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 
 class SimpleLSTM(Algorithm):
     def __init__(self, n_timestamps=7, n_features=5, n_classes=3,
                  n_units=[64, 32], lstm_dropout=0.2, rec_dropout=0.0, **kwargs):
-        super().__init__('simple_lstm', 'SimpleLSTM', 'SLSTM', 42, **kwargs)
+        super().__init__('simple_lstm', 'SimpleLSTM', 'SLSTM', can_handle_time_dim=True, **kwargs)
         self.n_timestamps = n_timestamps
         self.n_features = n_features
         self.n_classes = n_classes
@@ -17,16 +17,6 @@ class SimpleLSTM(Algorithm):
         self.rec_dropout = rec_dropout
 
     def __call__(self):
-        # model = Sequential()
-        # model.add(LSTM(return_sequences=True, input_shape=(None, 1), units=50))
-        # model.add(Dropout(0.2))
-        # model.add(LSTM(100, return_sequences=False))
-        # model.add(Dropout(0.2))
-        # model.add(Dense(3))
-        # model.add(Activation('softmax'))
-        # model.compile(loss='categorical_crossentropy', optimizer='adam',
-        #               metrics=['categorical_accuracy'])
-        # return model
         model = Sequential()
         for i, layer_units in enumerate(self.n_units):
             is_last_one = i == len(self.n_units) - 1
@@ -71,7 +61,8 @@ class SimpleLSTM(Algorithm):
         #     self.model.reset_states()
         #     print(f'Epoch {i}: '
         #           f'{"; ".join([f"{m}={history.history[m]}" for m in history.history])}')
-        return super().fit(*self.transform(X, y), shuffle=True, **kwargs)
+        return super().fit(*self.transform(X, y), shuffle=True, verbose=0,
+                           callbacks=[TQDMNotebookCallback()], **kwargs)
 
     def predict(self, X, **kwargs):
         pred = super().predict(self.transform(X), **kwargs)
