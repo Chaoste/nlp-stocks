@@ -6,15 +6,21 @@ from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 
 class SimpleLSTM(Algorithm):
-    def __init__(self, n_timestamps=7, n_features=5, n_classes=3,
-                 n_units=[64, 32], lstm_dropout=0.2, rec_dropout=0.0, **kwargs):
-        super().__init__('simple_lstm', 'SimpleLSTM', 'SLSTM', can_handle_time_dim=True, **kwargs)
+    def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=False,
+                 n_units=[64, 64], lstm_dropout=0.2, rec_dropout=0.0, **kwargs):
+        kwargs['batch_size'] = kwargs.get('batch_size', 32)
+        super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
+                         **kwargs)
         self.n_timestamps = n_timestamps
         self.n_features = n_features
         self.n_classes = n_classes
         self.n_units = n_units
         self.lstm_dropout = lstm_dropout
         self.rec_dropout = rec_dropout
+        self.shuffle = shuffle
+
+    def can_handle_time_dim(self):
+        return True
 
     def __call__(self):
         model = Sequential()
@@ -61,7 +67,7 @@ class SimpleLSTM(Algorithm):
         #     self.model.reset_states()
         #     print(f'Epoch {i}: '
         #           f'{"; ".join([f"{m}={history.history[m]}" for m in history.history])}')
-        return super().fit(*self.transform(X, y), shuffle=True, verbose=0,
+        return super().fit(*self.transform(X, y), shuffle=self.shuffle, verbose=0,
                            callbacks=[TQDMNotebookCallback()], **kwargs)
 
     def predict(self, X, **kwargs):

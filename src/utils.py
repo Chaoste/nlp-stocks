@@ -1,6 +1,8 @@
 import copy
+import re
 
 import pandas as pd
+from tabulate import tabulate
 
 
 def announce_experiment(title: str, dashes: int = 70):
@@ -37,3 +39,25 @@ def _merge_metrics(metrics_per_run):
     mcc_metric = pd.DataFrame(all_metrics.loc['mcc']).reset_index()
     mcc_metric = mcc_metric.pivot(*mcc_metric.columns)  # index, columns, values
     return all_metrics, mcc_metric
+
+
+def _fill_empty_cell(match):
+    matched_string = match.group(1)
+    amount = len(matched_string)
+    left = amount // 2
+    right = amount - left
+    return f'|{" "*(left-1)}-{" "*right}|'
+
+
+def pandas_df_to_markdown_table(df):
+    output = tabulate(df, headers='keys', tablefmt='pipe')
+    cols = re.compile(r"\('([^']+)', '([^']+)'\)")
+    replace = r"  \1    \2  "
+    output = cols.sub(replace, output)
+    empty_cells = re.compile(r"\|([ ]+)\|")
+    output = empty_cells.sub(_fill_empty_cell, output)
+    return output
+
+
+def print_metrics_as_md(path):
+    print(pandas_df_to_markdown_table(pd.read_csv(path, header=[0, 1])))

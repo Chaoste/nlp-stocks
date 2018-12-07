@@ -1,7 +1,9 @@
 import sys
 import re
 
+import numpy as np
 from tqdm import tqdm_notebook
+# https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html
 from sklearn.neural_network import MLPClassifier as SKL_MLPClassifier
 
 from ..algorithm_utils import Algorithm
@@ -9,24 +11,44 @@ from ..algorithm_utils import Algorithm
 
 class MLPClassifier(Algorithm):
     def __init__(self, *args, seed=42, epochs=100, **kwargs):
-        super().__init__('mlp', 'MLPClassifier', 'MLP', seed, can_handle_time_dim=False)
+        super().__init__('mlp', 'MLPClassifier', 'MLP', seed)
         self._args = args
         self._kwargs = kwargs
+        self._kwargs['hidden_layer_sizes'] = self._kwargs.get('hidden_layer_sizes', (32, 32, 32, 3))
+        self._kwargs['activation'] = self._kwargs.get('activation', 'tanh')
+        self._kwargs['solver'] = self._kwargs.get('solver', 'adam')
         self._kwargs['random_state'] = seed
         self._kwargs['max_iter'] = epochs
+        self._kwargs['verbose'] = True
+        # tol=1e-4, learning_rate_init=1e-4, alpha=0.0001
+
+    def can_handle_time_dim(self):
+        return False
 
     def __call__(self):
         model = SKL_MLPClassifier(*self._args, **self._kwargs)
         return model
 
+    def transform(self, y):
+        classes = np.unique(y)
+        assert min(classes) == -1
+        return y + 1
+
+    def reverse_transform(self, y):
+        classes = np.unique(y)
+        assert min(classes) == 0
+        return y - 1
+
     def fit(self, X, y, **kwargs):
         wrapper = MLPOutputToProgressBar(total=self._kwargs['max_iter'])
         with wrapper:
-            super().fit(X, y, **kwargs)
+            super(MLPClassifier, self).fit(X, y, **kwargs)
         self.history = wrapper.history
 
     def predict(self, X, **kwargs):
-        return self.model.predict(X, **kwargs)
+        # super().predict not working: github.com/keras-team/keras/issues/11818
+        pred = self.model.predict(X, **kwargs)
+        return self.classes_[pred]
 
 
 class History():

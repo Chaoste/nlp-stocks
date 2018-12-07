@@ -37,12 +37,15 @@ def select_only_numerical(X):
     return X
 
 
-def prepare_data(stocks_ds, train_size=20000, test_size=2000):
+def prepare_data(stocks_ds, train_size=60000, test_size=6000):
     logger = logging.getLogger(__name__)
     stocks_ds = stocks_ds or NyseStocksDataset()
     X_train, y_train, X_test, y_test = stocks_ds.data()
-    small_X_train, small_y_train = downsample(X_train, y_train, train_size)
-    small_X_test, small_y_test = downsample(X_test, y_test, test_size)
+    n_classes = len(pd.unique(y_train))
+    class_train_size = train_size // n_classes
+    class_test_size = test_size // n_classes
+    small_X_train, small_y_train = downsample(X_train, y_train, class_train_size)
+    small_X_test, small_y_test = downsample(X_test, y_test, class_test_size)
     counts = small_y_train.groupby(small_y_train).count()
     logger.info(f"Train Labels --> {'; '.join([f'{x}: {counts[x]}' for x in counts.index])}")
     logger.info(f'Training range: {small_X_train.date.min()} to {small_X_train.date.max()}')
