@@ -10,13 +10,14 @@ from ..algorithm_utils import Algorithm
 
 
 class MLPClassifier(Algorithm):
-    def __init__(self, *args, seed=42, epochs=100, **kwargs):
+    def __init__(self, *args, seed=42, epochs=200, **kwargs):
         super().__init__('mlp', 'MLPClassifier', 'MLP', seed)
         self._args = args
         self._kwargs = kwargs
         self._kwargs['hidden_layer_sizes'] = self._kwargs.get('hidden_layer_sizes', (32, 32, 32, 3))
         self._kwargs['activation'] = self._kwargs.get('activation', 'tanh')
         self._kwargs['solver'] = self._kwargs.get('solver', 'adam')
+        self._kwargs['batch_size'] = self._kwargs.get('batch_size', 256)
         self._kwargs['random_state'] = seed
         self._kwargs['max_iter'] = epochs
         self._kwargs['verbose'] = True

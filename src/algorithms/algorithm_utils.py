@@ -43,8 +43,8 @@ class Algorithm(KerasClassifier, metaclass=abc.ABCMeta):
             return self.history
         except KeyboardInterrupt as ex:
             print(f'User Interaction: Stopped earlier!')
-            raise ex
-            # return None
+            # raise ex
+            return None
 
     @abc.abstractmethod
     def predict(self, X, **kwargs):

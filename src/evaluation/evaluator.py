@@ -55,6 +55,8 @@ class Evaluator:
         path = os.path.join(output_dir, f'{self.name}-{timestamp}.pkl')
         self.logger.info(f'Store evaluator results at {os.path.abspath(path)}')
         save_dict = {
+            # TODO: 'pipelines': map_deep_dict(self._temp_pipelines, 2, lambda x: x[0]),
+            # If not working then: x[0].steps[-1][1].history
             'dataset_names': self.dataset_names,
             'predictor_names': self.predictor_names,
             'metrics': self.metrics,
@@ -103,6 +105,7 @@ class Evaluator:
                     predictor.can_handle_time_dim()
                 self.logger.info(f"{'-'*10} {predictor_name} | {ds} {'-'*10}")
                 pipeline, y_pred = run_pipeline(predictor, data, time_dim=can_handle_time_dim)
+                time.sleep(1)
                 y_pred = y_pred.clip(-1, 1)
                 ev = self.measure_pipeline_run_results(data[3], y_pred)
                 predictions.loc[:, (str(ds), predictor_name)] = y_pred

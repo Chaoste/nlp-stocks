@@ -1,13 +1,15 @@
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
 from keras.utils import np_utils
+from keras import optimizers
+from sklearn.model_selection import train_test_split
 
 from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 
 class SimpleLSTM(Algorithm):
-    def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=False,
-                 n_units=[64, 64], lstm_dropout=0.2, rec_dropout=0.0, **kwargs):
+    def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=True,
+                 n_units=[64, 64], lstm_dropout=0.2, rec_dropout=0.2, lr=0.01, **kwargs):
         kwargs['batch_size'] = kwargs.get('batch_size', 32)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
@@ -15,6 +17,7 @@ class SimpleLSTM(Algorithm):
         self.n_features = n_features
         self.n_classes = n_classes
         self.n_units = n_units
+        self.lr = lr
         self.lstm_dropout = lstm_dropout
         self.rec_dropout = rec_dropout
         self.shuffle = shuffle
@@ -31,7 +34,9 @@ class SimpleLSTM(Algorithm):
                 dropout=self.lstm_dropout, recurrent_dropout=self.rec_dropout,
                 return_sequences=not is_last_one))
         model.add(Dense(self.n_classes, activation='softmax'))
-        model.compile(loss='categorical_crossentropy', optimizer='adam',  # rmsprop, adadelta, adam
+        # rmsprop, adadelta, adam
+        optimizer = optimizers.Adam(lr=self.lr)
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer,
                       metrics=['categorical_accuracy'])
         return model
 
@@ -67,7 +72,15 @@ class SimpleLSTM(Algorithm):
         #     self.model.reset_states()
         #     print(f'Epoch {i}: '
         #           f'{"; ".join([f"{m}={history.history[m]}" for m in history.history])}')
-        return super().fit(*self.transform(X, y), shuffle=self.shuffle, verbose=0,
+        val_split = kwargs.get('validation_split', 0.2)
+        if not self.shuffle:
+            kwargs['validation_split'] = val_split
+        else:
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, y, test_size=val_split, random_state=self.seed)
+            kwargs['validation_split'] = 0
+            kwargs['validation_data'] = (X_val, y_val)
+        return super().fit(*self.transform(X, y), shuffle=False, verbose=0,
                            callbacks=[TQDMNotebookCallback()], **kwargs)
 
     def predict(self, X, **kwargs):

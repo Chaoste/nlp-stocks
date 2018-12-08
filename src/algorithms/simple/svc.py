@@ -20,6 +20,11 @@ class SVC(Algorithm):
         return model
 
     def fit(self, X, y, **kwargs):
+        # 60k -> 8min
+        # 80k -> ?
+        # 600k -> didn't converge after 16h calculations
+        X = X.iloc[:80000]
+        y = y.iloc[:80000]
         return super(SVC, self).fit(X, y, **kwargs)
 
     def predict(self, X, **kwargs):

@@ -16,7 +16,7 @@ class Plotter:
 
     # --- Final plot functions ---------------------------------------------- #
 
-    def plot_history(self, history, store=True):
+    def plot_history(self, history, name=None, store=True):
         fig, axes = plt.subplots(1, 2, figsize=(13, 4))
         epochs = len(history.history['loss'])
 
@@ -38,10 +38,12 @@ class Plotter:
             ax.set_title(metric.capitalize())
             ax.legend()
         fig.tight_layout()
-        fig.suptitle('History of Keras Model')
+        suffix = f' {name}' if name else ''
+        fig.suptitle(f'History of Keras Model{suffix}')
         fig.subplots_adjust(top=0.85, hspace=1, right=1, left=0)
         if store:
-            self.store(fig, 'history', 'png')
+            suffix = f'-{name}' if name else ''
+            self.store(fig, f'history{suffix}', 'png')
 
     def show_and_save_model(self, model):
         plot_model(model, to_file=os.path.join(self.output_dir, 'model.png'))
