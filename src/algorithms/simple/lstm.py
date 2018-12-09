@@ -75,12 +75,15 @@ class SimpleLSTM(Algorithm):
         val_split = kwargs.get('validation_split', 0.2)
         if not self.shuffle:
             kwargs['validation_split'] = val_split
+            X, y = self.transform(X, y)
         else:
-            X_train, X_val, y_train, y_val = train_test_split(
+            X, y = self.transform(X, y)
+            X, X_val, y, y_val = train_test_split(
                 X, y, test_size=val_split, random_state=self.seed)
             kwargs['validation_split'] = 0
             kwargs['validation_data'] = (X_val, y_val)
-        return super().fit(*self.transform(X, y), shuffle=False, verbose=0,
+
+        return super().fit(X, y, shuffle=False, verbose=0,
                            callbacks=[TQDMNotebookCallback()], **kwargs)
 
     def predict(self, X, **kwargs):
