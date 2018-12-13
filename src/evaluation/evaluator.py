@@ -42,6 +42,10 @@ class Evaluator:
             init_logging(os.path.join(self.output_dir, 'logs'))
         self.logger = logging.getLogger(__name__)
         self.metrics = None
+        self.predictions = None
+        # Temporary results if the pipeline breaks
+        self._metrics = None
+        self._predictions = None
         self.seed = seed
         self.store = store
         self.n_train_samples = n_train_samples
@@ -90,33 +94,32 @@ class Evaluator:
         multiindex = pd.MultiIndex.from_product([self.dataset_names, self.predictor_names],
                                                 names=['datasets', 'predictors'])
         # metrics = create_deep_dict(self.dataset_names, self.predictor_names)
-        metrics = pd.DataFrame(0, index=['prec', 'rec', 'f1', 'acc', 'mcc'], columns=multiindex)
-        metrics.sort_index(axis=1, inplace=True)
+        self._metrics = pd.DataFrame(0, index=['prec', 'rec', 'f1', 'acc', 'mcc'],
+                                     columns=multiindex)
+        self._metrics.sort_index(axis=1, inplace=True)
         # Might be required if datasets have different sizes
         # predictions = create_deep_dict(self.dataset_names, self.predictor_names)
-        predictions = pd.DataFrame(0, index=range(self.n_test_samples), columns=multiindex)
+        self._predictions = pd.DataFrame(0, index=range(self.n_test_samples), columns=multiindex)
         for ds in self.datasets:
             self.logger.info(f"{'-'*10} Prepare dataset {'-'*10}")
             data = prepare_data(ds, self.n_train_samples, self.n_test_samples)
             n_features = len(data[0].columns.levels[1])
             predictors = self.get_predictors(n_features)
             for predictor, predictor_name in zip(predictors, self.predictor_names):
-                can_handle_time_dim = isinstance(predictor, Algorithm) and\
-                    predictor.can_handle_time_dim()
                 self.logger.info(f"{'-'*10} {predictor_name} | {ds} {'-'*10}")
-                pipeline, y_pred = run_pipeline(predictor, data, time_dim=can_handle_time_dim)
-                time.sleep(1)
+                pipeline, y_pred = run_pipeline(predictor, data)
+                time.sleep(1)  # TODO: Why did I do this?
                 y_pred = y_pred.clip(-1, 1)
                 ev = self.measure_pipeline_run_results(data[3], y_pred)
                 if len(y_pred) != self.n_test_samples:
                     self.logger.warn(
-                        f'Not enough predictions are available. Check the data distribution!')
-                predictions.loc[:len(y_pred)-1, (str(ds), predictor_name)] = y_pred
-                assert all(metrics.index == list(ev.keys()))
-                metrics.loc[:, (str(ds), predictor_name)] = ev.values()
+                        f'Not enough self._predictions are available. Check the data distribution!')
+                self._predictions.loc[:len(y_pred)-1, (str(ds), predictor_name)] = y_pred
+                assert all(self._metrics.index == list(ev.keys()))
+                self._metrics.loc[:, (str(ds), predictor_name)] = ev.values()
                 self._temp_pipelines[str(ds)][predictor_name] = pipeline, y_pred
-        self.predictions = predictions
-        self.metrics = metrics
+        self.predictions = self._predictions
+        self.metrics = self._metrics
         if self.store:
             self.export_results()
         return self.metrics

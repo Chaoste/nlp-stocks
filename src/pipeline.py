@@ -3,6 +3,7 @@ from sklearn.preprocessing import RobustScaler, FunctionTransformer
 from sklearn.svm import SVC
 
 from .preparation import prepare_data
+from .algorithms import Algorithm
 
 
 def from_3d_to_2d(X):
@@ -25,15 +26,17 @@ def X_to_numpy(X):
     return X.values.reshape(n_samples, n_timestamps, n_features)
 
 
-def run_pipeline(predictor, data, time_dim=True):
+def run_pipeline(predictor, data):
+    can_handle_time_dim = isinstance(predictor, Algorithm) and\
+        predictor.can_handle_time_dim()
     X_train, y_train, X_test, y_test = data
     n_timestamps = len(X_test.columns.levels[0])
     pipeline = Pipeline([
         # ("sel", FunctionTransformer(select_only_numerical, validate=True)),
         ("pre-scaling", FunctionTransformer(from_3d_to_2d, validate=False)),
         ("scaler", RobustScaler()),  # feature_range=(0, 1)
-        ("post-scaling", FunctionTransformer(lambda X: from_2d_to_3d(X, n_timestamps, time_dim),
-                                             validate=False)),
+        ("post-scaling", FunctionTransformer(
+            lambda X: from_2d_to_3d(X, n_timestamps, can_handle_time_dim), validate=False)),
         ("predictor", predictor),
     ])
     # pipeline.set_params(predictor__h=0)
