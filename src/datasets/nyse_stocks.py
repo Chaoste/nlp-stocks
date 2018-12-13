@@ -13,6 +13,7 @@ NYSE_PRICES = os.path.join(DATA_DIR, 'nyse', 'prices.csv')
 # FEATURES = ['date', 'symbol', 'open', 'close', 'low', 'high', 'volume']
 FEATURES = ['date', 'symbol']
 TIME_FEATURES = ['open', 'close', 'low', 'high', 'volume']
+DEFAULT_TIME_FEATURES = ['open', 'close']
 
 START_DATE = pd.to_datetime('2010-01-04')
 TRAIN_VAL_SPLIT = pd.to_datetime('2014-01-04')
@@ -23,10 +24,10 @@ END_DATE = pd.to_datetime('2016-12-30')
 class NyseStocksDataset(Dataset):
     def __init__(self, name: str = 'NyseStocksDataset',
                  file_path: str = NYSE_PRICES,
-                 epsilon: int = 0.004,
+                 epsilon: int = 0.01,  # Good classes distribution: 0.004
                  look_back: int = 7,
                  forecast_out: int = 1,
-                 features: List[str] = TIME_FEATURES):
+                 features: List[str] = DEFAULT_TIME_FEATURES):
         super().__init__(name)
         self.prices = None
         self.file_path = file_path

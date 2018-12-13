@@ -124,6 +124,23 @@ class Evaluator:
             self.export_results()
         return self.metrics
 
+    def get_model_summary(self, ds_i, predictor_i):
+        ds_name = self.dataset_names[ds_i]
+        pred_name = self.predictor_names[predictor_i]
+        return self._temp_pipelines[ds_name][pred_name][0].steps[-1][1].model.summary()
+
+    def get_models_input(self, ds_i, predictor_i):
+        ds = self.datasets[ds_i]
+        ds_name = self.dataset_names[ds_i]
+        pred_name = self.predictor_names[predictor_i]
+        data = prepare_data(ds, self.n_train_samples, self.n_test_samples)
+        X_train = data[0]
+        pipeline = self._temp_pipelines[ds_name][pred_name][0]
+        X_train = pipeline.steps[0][1].transform(X_train)
+        X_train = pipeline.steps[1][1].transform(X_train)
+        X_train = pipeline.steps[2][1].transform(X_train)
+        return X_train
+
     def get_metrics(self):
         return self.metrics
 

@@ -10,7 +10,7 @@ from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 class SimpleLSTM(Algorithm):
     def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=True,
                  n_units=[64, 64], lstm_dropout=0.2, rec_dropout=0.2, lr=0.01, **kwargs):
-        kwargs['batch_size'] = kwargs.get('batch_size', 256)
+        kwargs['batch_size'] = kwargs.get('batch_size', 512)
         kwargs['epochs'] = kwargs.get('epochs', 200)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
