@@ -108,7 +108,10 @@ class Evaluator:
                 time.sleep(1)
                 y_pred = y_pred.clip(-1, 1)
                 ev = self.measure_pipeline_run_results(data[3], y_pred)
-                predictions.loc[:, (str(ds), predictor_name)] = y_pred
+                if len(y_pred) != self.n_test_samples:
+                    self.logger.warn(
+                        f'Not enough predictions are available. Check the data distribution!')
+                predictions.loc[:len(y_pred)-1, (str(ds), predictor_name)] = y_pred
                 assert all(metrics.index == list(ev.keys()))
                 metrics.loc[:, (str(ds), predictor_name)] = ev.values()
                 self._temp_pipelines[str(ds)][predictor_name] = pipeline, y_pred
