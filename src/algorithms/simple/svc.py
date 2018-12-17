@@ -1,5 +1,6 @@
 # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
 from sklearn.svm import SVC as SKL_SVC
+import numpy as np
 
 from ..algorithm_utils import Algorithm
 
@@ -23,9 +24,11 @@ class SVC(Algorithm):
         # 60k -> 8min
         # 80k -> ?
         # 600k -> didn't converge after 16h calculations
-        X = X.iloc[:80000]
-        y = y.iloc[:80000]
-        return super(SVC, self).fit(X, y, **kwargs)
+        X = np.array(X)[:80000]
+        y = np.array(y)[:80000]
+        res = super(SVC, self).fit(X, y, **kwargs)
+        self.history = None
+        return res
 
     def predict(self, X, **kwargs):
         # super().predict not working: github.com/keras-team/keras/issues/11818

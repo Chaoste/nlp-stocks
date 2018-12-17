@@ -3,6 +3,9 @@ from keras.layers import LSTM, Dense
 from keras.utils import np_utils
 from keras import optimizers
 from sklearn.model_selection import train_test_split
+# from sklearn.utils import shuffle
+import numpy as np
+from tensorflow import set_random_seed
 
 from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
@@ -27,6 +30,8 @@ class SimpleLSTM(Algorithm):
         return True
 
     def __call__(self):
+        np.random.seed(self.seed)
+        set_random_seed(self.seed)
         model = Sequential()
         for i, layer_units in enumerate(self.n_units):
             is_last_one = i == len(self.n_units) - 1
@@ -66,6 +71,8 @@ class SimpleLSTM(Algorithm):
         return _X, _y
 
     def fit(self, X, y, **kwargs):
+        np.random.seed(self.seed)
+        set_random_seed(self.seed)
         # For statefule training (would require seperating by company)
         # for i in range(self.sk_params['epochs']):
         #     history = self.model.fit(X, y, epochs=1, batch_size=self.sk_params['batch_size'],
@@ -80,11 +87,14 @@ class SimpleLSTM(Algorithm):
         else:
             X, y = self.transform(X, y)
             X, X_val, y, y_val = train_test_split(
-                X, y, test_size=val_split, random_state=self.seed)
+                X, y, test_size=val_split, shuffle=False, stratify=None,
+                random_state=self.seed)
+            # X, y = shuffle(X, y, random_state=self.seed)
+            # X_val, y_val = shuffle(X_val, y_val, random_state=self.seed)
             kwargs['validation_split'] = 0
             kwargs['validation_data'] = (X_val, y_val)
 
-        return super().fit(X, y, shuffle=False, verbose=0,
+        return super().fit(X, y, shuffle=self.shuffle, verbose=0,
                            callbacks=[TQDMNotebookCallback()], **kwargs)
 
     def predict(self, X, **kwargs):

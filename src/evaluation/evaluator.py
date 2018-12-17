@@ -1,5 +1,6 @@
 # import gc
 import logging
+import itertools
 import os
 import pickle
 # import traceback
@@ -11,6 +12,7 @@ import time
 from sklearn.metrics import classification_report, matthews_corrcoef,\
     accuracy_score, precision_recall_fscore_support
 
+from .plotter import Plotter
 from .config import init_logging
 from ..preparation import prepare_data
 from ..pipeline import run_pipeline
@@ -47,6 +49,7 @@ class Evaluator:
         self._metrics = None
         self._predictions = None
         self.seed = seed
+        self.plotter = Plotter(self.output_dir, f'figures/exp-{name}')
         self.store = store
         self.n_train_samples = n_train_samples
         self.n_test_samples = n_test_samples
@@ -122,12 +125,18 @@ class Evaluator:
         self.metrics = self._metrics
         if self.store:
             self.export_results()
+            self.metrics.to_csv(os.path.join(self.output_dir, f'custom/{self.name}.csv'))
+            self.plot_histories()
         return self.metrics
 
+    def get_predictor(self, ds_i, predictor_i):
+        ds_name = self.dataset_names[ds_i] if isinstance(ds_i, int) else ds_i
+        pred_name = self.predictor_names[predictor_i] if \
+            isinstance(predictor_i, int) else predictor_i
+        return self._temp_pipelines[ds_name][pred_name][0].steps[-1][1]
+
     def get_model_summary(self, ds_i, predictor_i):
-        ds_name = self.dataset_names[ds_i]
-        pred_name = self.predictor_names[predictor_i]
-        return self._temp_pipelines[ds_name][pred_name][0].steps[-1][1].model.summary()
+        return self.get_predictor(ds_i, predictor_i).model.summary()
 
     def get_models_input(self, ds_i, predictor_i):
         ds = self.datasets[ds_i]
@@ -150,12 +159,13 @@ class Evaluator:
         mcc = mcc_flatten.pivot(*mcc_flatten.columns)  # index, column, value
         return mcc
 
-    # @property
-    # def predictors(self):
-    #     predictors = self._predictors(self.seed)
-    #     assert np.unique([str(x) for x in predictors]).size == len(predictors),\
-    #         'Some predictors have the same name!'
-    #     return predictors
+    # ----- Plotting --------------------------------------------------------- #
+
+    def plot_histories(self, store=True):
+        for ds, pred in itertools.product(self.dataset_names, self.predictor_names):
+            predictor = self.get_predictor(ds, pred)
+            if hasattr(predictor, 'history') and predictor.history is not None:
+                self.plotter.plot_history(predictor.history, f'{pred} on {ds}', store=store)
 
     # Import benchmark_results if this evaluator uses the same detectors and datasets
     # self.results are not available because they are overwritten by each run
