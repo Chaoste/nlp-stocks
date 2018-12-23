@@ -26,7 +26,7 @@ def X_to_numpy(X):
     return X.values.reshape(n_samples, n_timestamps, n_features)
 
 
-def run_pipeline(predictor, data):
+def build_pipeline(predictor, data):
     can_handle_time_dim = isinstance(predictor, Algorithm) and\
         predictor.can_handle_time_dim()
     X_train, y_train, X_test, y_test = data
@@ -39,8 +39,12 @@ def run_pipeline(predictor, data):
             lambda X: from_2d_to_3d(X, n_timestamps, can_handle_time_dim), validate=False)),
         ("predictor", predictor),
     ])
-    # pipeline.set_params(predictor__h=0)
-    # Keras model will create validation set on its own
+    return pipeline
+
+
+def run_pipeline(predictor, data):
+    X_train, y_train, X_test, y_test = data
+    pipeline = build_pipeline(predictor, data)
     pipeline.fit(X_train, y_train)
     y_pred = pipeline.predict(X_test)
     return pipeline, y_pred

@@ -12,7 +12,7 @@ NYSE_PRICES = os.path.join(DATA_DIR, 'nyse', 'prices.csv')
 # TODO: Currently only using open for one less dimension
 # FEATURES = ['date', 'symbol', 'open', 'close', 'low', 'high', 'volume']
 FEATURES = ['date', 'symbol']
-TIME_FEATURES = ['open', 'close', 'low', 'high', 'volume']
+TIME_FEATURES = ['open', 'close', 'low', 'high', 'volume', 'movement', 'gspc', 'vix']
 DEFAULT_TIME_FEATURES = ['open', 'close']
 
 START_DATE = pd.to_datetime('2010-01-04')
@@ -27,16 +27,19 @@ class NyseStocksDataset(Dataset):
                  epsilon: int = 0.01,  # Good classes distribution: 0.004
                  look_back: int = 7,
                  forecast_out: int = 1,
-                 features: List[str] = DEFAULT_TIME_FEATURES):
+                 features: List[str] = DEFAULT_TIME_FEATURES,
+                 companies: List[int] = None):
         super().__init__(name)
         self.prices = None
         self.file_path = file_path
+        self.file_dir, _ = os.path.split(self.file_path)
         self.epsilon = epsilon
         assert look_back > 0
         self.look_back = look_back
         assert forecast_out > 0
         self.forecast_out = forecast_out
         self.features = features
+        self.companies = companies
 
     def load(self):
         """Load data"""
@@ -57,15 +60,26 @@ class NyseStocksDataset(Dataset):
 
         self._data = (X_train, y_train, X_test, y_test)
 
+    def _shorten_feature_name(self, day, feature):
+        if feature[:5] == 'gspc_':
+            return f'd{day:02d}_g{feature[5].upper()}'
+        if feature[:4] == 'vix_':
+            return f'd{day:02d}_v{feature[4].upper()}'
+        return f'd{day:02d}_{feature[0].upper()}'
+
+    def _split_into_multiindex(self, columns):
+        for c in columns:
+            yield c[:3], c[4:]  # (day, feature)
+
     def shape_company_data(self, comp_prices):
         # Last days features
         previous = pd.concat([
             comp_prices[self.features].shift(i).rename(
-                lambda c: f'day_{i}_{c[0].upper()}', axis=1)
+                lambda c: self._shorten_feature_name(i, c), axis=1)
             for i in range(1, self.look_back + 1)], axis=1)
         # Store in MultiIndex DataFrame
         previous.columns = pd.MultiIndex.from_tuples(
-            [(c[:-2], c[-1:]) for c in previous.columns],
+            list(self._split_into_multiindex(previous.columns)),
             names=('day', 'feature'))
         # Add other features and store them at day column 'other'
         other_features = comp_prices[FEATURES].copy()
@@ -81,6 +95,9 @@ class NyseStocksDataset(Dataset):
 
     def calculate_labels(self, prices):
         rel_dist = prices.shift(-self.forecast_out+1).close / prices.open - 1
+        return self.get_movement(rel_dist)
+
+    def get_movement(self, rel_dist):
         if self.epsilon is not None:
             labels = np.zeros(len(rel_dist))
             labels[rel_dist < -self.epsilon] = -1
@@ -90,12 +107,45 @@ class NyseStocksDataset(Dataset):
             labels[rel_dist < 0] = -1
         return labels
 
+    def load_vix(self):
+        vix = pd.read_csv(os.path.join(self.file_dir, 'vix.csv'), skiprows=1)
+        vix.columns = [x.lower() for x in vix.columns]
+        vix.columns = [x.replace(" ", "_") for x in vix.columns]
+        vix.date = pd.to_datetime(vix.date, errors='coerce')
+        vix = vix[vix.date.between(START_DATE, END_DATE)]
+        return vix
+
+    def load_gspc(self):
+        gspc = pd.read_csv(os.path.join(self.file_dir, 'gspc.csv'))
+        gspc.columns = [x.lower() for x in gspc.columns]
+        gspc.columns = [f'gspc_{x.replace(" ", "_")}' if x != 'date' else x
+                        for x in gspc.columns]
+        gspc.date = pd.to_datetime(gspc.date, errors='coerce')
+        gspc = gspc[gspc.date.between(START_DATE, END_DATE)]
+        return gspc
+
+    def enhance_features(self, prices):
+        if 'movement' in self.features:
+            rel_dist = prices.close / prices.open - 1
+            prices['movement'] = self.get_movement(rel_dist)
+        if any([x[:4] == 'gspc' for x in self.features]):
+            gspc = self.load_gspc()
+            prices = prices.merge(gspc)
+        if any([x[:3] == 'vix' for x in self.features]):
+            vix = self.load_vix()
+            prices = prices.merge(vix)
+        return prices
+
     def shape_data(self):
         prices = self.prices.copy()
+        prices = self.enhance_features(prices)
         merged = []
-        for _, comp_prices in tqdm(prices.groupby(prices.symbol, sort=False)):
-            comp_data = self.shape_company_data(comp_prices)
-            merged.append(comp_data)
+        grouped = prices.groupby(prices.symbol, sort=True)
+        # companies = pd.Series(grouped.keys())
+        for comp_symbol, comp_prices in tqdm(grouped):
+            if self.companies is None or comp_symbol in self.companies:
+                comp_data = self.shape_company_data(comp_prices)
+                merged.append(comp_data)
         data = pd.concat(merged).sort_index()
         X = data.drop(columns='label', level=0)
         X.columns = X.columns.remove_unused_levels()

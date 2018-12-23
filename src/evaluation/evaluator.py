@@ -23,7 +23,7 @@ from ..utils import create_deep_dict
 class Evaluator:
     def __init__(self, name: str, datasets: list, get_predictors: callable, output_dir: {str}=None,
                  seed: int=None, create_log_file: bool=True, store: bool=False,
-                 n_train_samples: int=60000, n_test_samples: int=6000):
+                 n_train_samples: int=60000, n_test_samples: int=6000, downsample: bool=True):
         """
         :param datasets: list of datasets
         :param predictors: callable that returns list of predictors
@@ -51,6 +51,7 @@ class Evaluator:
         self.seed = seed
         self.plotter = Plotter(self.output_dir, f'figures/exp-{name}')
         self.store = store
+        self.downsample = downsample
         self.n_train_samples = n_train_samples
         self.n_test_samples = n_test_samples
         self._temp_pipelines = create_deep_dict(self.dataset_names, self.predictor_names)
@@ -105,7 +106,8 @@ class Evaluator:
         self._predictions = pd.DataFrame(0, index=range(self.n_test_samples), columns=multiindex)
         for ds in self.datasets:
             self.logger.info(f"{'-'*10} Prepare dataset {'-'*10}")
-            data = prepare_data(ds, self.n_train_samples, self.n_test_samples)
+            data = prepare_data(ds, self.n_train_samples, self.n_test_samples,
+                                downsample=self.downsample)
             n_features = len(data[0].columns.levels[1])
             predictors = self.get_predictors(n_features)
             for predictor, predictor_name in zip(predictors, self.predictor_names):

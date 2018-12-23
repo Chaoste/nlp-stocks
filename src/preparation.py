@@ -15,10 +15,10 @@ def find_cut(y, c, n_samples):
     return y[first_match].index[0]
 
 
-def downsample(X, y, n_samples=None):
+def balance_by_downsampling(X, y, n_samples=None):
     classes = pd.unique(y)
     counts = [sum(y == c) for c in classes]
-    n_samples = n_samples or min(counts)
+    n_samples = min(n_samples or np.inf, *counts)
     selectors = [find_cut(y, c, n_samples) for c in classes]
     y_resampled = pd.concat([
         y[y == c].loc[:s]
@@ -37,23 +37,34 @@ def select_only_numerical(X):
     return X
 
 
-def prepare_data(stocks_ds, train_size=60000, test_size=6000):
+def random_choice(X, y, n_samples):
+    idx = np.random.choice(np.arange(len(y)), n_samples, replace=False)
+    return X.iloc[idx], y.iloc[idx]
+
+
+def prepare_data(stocks_ds, train_size=60000, test_size=6000, downsample=True):
     logger = logging.getLogger(__name__)
     stocks_ds = stocks_ds or NyseStocksDataset()
     X_train, y_train, X_test, y_test = stocks_ds.data()
+    train_size = min(train_size, len(y_train))
+    test_size = min(test_size, len(y_test))
     n_classes = len(pd.unique(y_train))
     class_train_size = train_size // n_classes
-    class_test_size = test_size // n_classes
-    small_X_train, small_y_train = downsample(X_train, y_train, class_train_size)
-    small_X_test, small_y_test = downsample(X_test, y_test, class_test_size)
-    counts = small_y_train.groupby(small_y_train).count()
+    # class_test_size = test_size // n_classes
+    if downsample:
+        X_train, y_train = balance_by_downsampling(X_train, y_train, class_train_size)
+        # X_test, y_test = balance_by_downsampling(X_test, y_test, class_test_size)
+    else:
+        X_train, y_train = random_choice(X_train, y_train, train_size)
+    X_test, y_test = random_choice(X_test, y_test, test_size)
+    counts = y_train.groupby(y_train).count()
     logger.info(f"Train Labels --> {'; '.join([f'{x}: {counts[x]}' for x in counts.index])}")
-    logger.info(f'Training range: {small_X_train.date.min()} to {small_X_train.date.max()}')
-    counts = small_y_test.groupby(small_y_test).count()
+    logger.info(f'Training range: {X_train.date.min()} to {X_train.date.max()}')
+    counts = y_test.groupby(y_test).count()
     logger.info(f"Test Labels --> {'; '.join([f'{x}: {counts[x]}' for x in counts.index])}")
-    logger.info(f'Testing range: {small_X_test.date.min()} to {small_X_test.date.max()}')
-    small_X_train = select_only_numerical(small_X_train)
-    small_X_test = select_only_numerical(small_X_test)
+    logger.info(f'Testing range: {X_test.date.min()} to {X_test.date.max()}')
+    X_train = select_only_numerical(X_train)
+    X_test = select_only_numerical(X_test)
     logger.info("Done preparing data")
 
-    return small_X_train, small_y_train, small_X_test, small_y_test
+    return X_train, y_train, X_test, y_test
