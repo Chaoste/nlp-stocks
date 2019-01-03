@@ -20,6 +20,7 @@ echo Jupyter process id: $PID >> jupyter.logs;
 tail -n 3 -f jupyter.logs;
 
 # Recommended: Create a notebook config for jupyter
+# jupyter notebook --generate-config
 # Line 204 -> IP='0.0.0.0'
 # Line 276 -> Enter password after executing 'from notebook.auth import passwd; passwd()'
 # LIne 287 -> Port
