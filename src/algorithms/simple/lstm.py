@@ -12,11 +12,12 @@ from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 class SimpleLSTM(Algorithm):
     def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=True,
-                 n_units=[64, 64], lstm_dropout=0.2, rec_dropout=0.2, lr=0.01, **kwargs):
-        kwargs['batch_size'] = kwargs.get('batch_size', 512)
+                 n_units=[128, 128], lstm_dropout=0.2, rec_dropout=0.2, lr=0.001, ignore_features=[], **kwargs):
+        kwargs['batch_size'] = kwargs.get('batch_size', 128)
         kwargs['epochs'] = kwargs.get('epochs', 200)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
+        self.ignore_features = ignore_features
         self.n_timestamps = n_timestamps
         self.n_features = n_features
         self.n_classes = n_classes
@@ -49,7 +50,9 @@ class SimpleLSTM(Algorithm):
     def transform(self, X=None, y=None):
         if X is not None:
             # _X = X.reshape((*X.shape, 1))
-            _X = X
+            kept_features = [f for f in range(X.shape[2]) if f not in self.ignore_features and
+                             (f-self.n_features) not in self.ignore_features]
+            _X = X[:, :, kept_features]
         if y is not None:
             _y = np_utils.to_categorical(y + 1)
         if X is None:
