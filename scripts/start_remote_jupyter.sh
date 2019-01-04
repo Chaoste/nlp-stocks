@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
@@ -16,6 +16,8 @@ printf "\n\nStart Notebook\n" >> jupyter.logs;
 source venv/bin/activate;
 jupyter notebook &>> jupyter.logs &
 PID=$!;
+IP=$(hostname -I | cut -d' ' -f1);
+echo My IP: $IP >> jupyter.logs;
 echo Jupyter process id: $PID >> jupyter.logs;
 tail -n 3 -f jupyter.logs;
 
