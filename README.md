@@ -4,8 +4,7 @@ Forecast stock movements utilizing NLP on financial reports.
 ## Setup
 Follow the instructions for installing tensorflow/tensorflow-gpu. After that install the following modules:
 ```
-  pip install numpy pandas jupyter scikit-learn pyxdameraulevenshtein tqdm elasticsearch ipython-autotime keras spacy
-  spacy download en_core_web_sm
+  source ./setup.sh
 ```
 
 ### Troubleshooting Tensorflow
