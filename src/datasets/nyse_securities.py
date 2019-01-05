@@ -47,8 +47,7 @@ class NyseSecuritiesDataset():
         return self.data()[['Ticker symbol', 'Name']].drop_duplicates('Name')
 
     def get_most_similar_company(
-            self, fuzzy_name, debug=False, quiet=True) -> (pd.DataFrame):
-        acceptance_rate = 0.3
+            self, fuzzy_name, debug=False, quiet=True, acceptance_rate=0.02) -> (pd.DataFrame):
         # Test on all companies: https://regex101.com/r/RfZsbU/2/
         re_comp_suffix = re.compile(
             r",?[^\w](Corp\ A|A\ Corp|\&\ Co|Svc\.Gp|Corp(?:oration|'s)?|"
@@ -67,6 +66,7 @@ class NyseSecuritiesDataset():
         distances = pd.concat([companies['Name'], distances], axis=1)
         distances.sort_values('damerau_lev', inplace=True)
         if not quiet:
+            print(f"---{fuzzy_name}--- {distances.iloc[0]['damerau_lev']}")
             print(distances.head())
         if distances.iloc[0]['damerau_lev'] >= acceptance_rate:
             if debug:

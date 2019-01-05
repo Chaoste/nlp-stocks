@@ -23,7 +23,8 @@ def find_nyse_corporations(article_text, quiet=True):
     matched_stocks = dict([(x[0], x[2]) for x in matches if x[2] is not None])
     if not quiet:
         display_occurrences(doc, matched_stocks)
-    return [ent for ent in doc.ents if ent.text in matched_stocks]
+    return [(ent, securities_ds.get_company(matched_stocks[ent.text])) for ent in doc.ents
+            if ent.text in matched_stocks]
 
 
 def _to_rgb(cmap, step):
