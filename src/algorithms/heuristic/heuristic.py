@@ -5,12 +5,13 @@ from ..algorithm_utils import Algorithm
 
 class Heuristic(Algorithm):
     def __init__(self, name_suffix='', n_features=3, n_timestamps=7, mapping=None, seed=42,
-                 movement_feat=-3, vix_feats=[-2, -1]):
+                 movement_feat=-3, vix_feats=[-2, -1], one_class=0):
         super().__init__('heuristic', f'Heu{name_suffix}', f'Heuristic{name_suffix}', seed)
         self.n_features = n_features
         self.n_timestamps = n_timestamps
         self.movement_feat = movement_feat
         self.vix_feats = vix_feats
+        self.one_class = one_class
         self.mapping = (mapping or Heuristic.last_movement).__get__(self, Heuristic)
 
     def can_handle_time_dim(self):
@@ -42,7 +43,14 @@ class Heuristic(Algorithm):
 
     # ----- Heuristics ------------------------------------------------------- #
 
-    def last_movement(self, X, *args):
+    def one_class(self, X):
+        assert self.one_class in [-1, 0, 1]
+        return np.ones(X.shape[0]) * self.one_class
+
+    def random(self, X):
+        return np.random.randint(-1, 2, size=X.shape[0])
+
+    def last_movement(self, X):
         last_mov = self.for_last_day(self.get_mov_index())
         return X[:, last_mov].round()
 
