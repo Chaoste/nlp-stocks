@@ -12,6 +12,9 @@ class SVC(Algorithm):
         self._kwargs = kwargs
         self._kwargs['gamma'] = self._kwargs.get('gamma', 'scale')
 
+    def supports_seed(self):
+        return False
+
     def can_handle_time_dim(self):
         return False
 

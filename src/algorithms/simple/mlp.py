@@ -51,6 +51,11 @@ class MLPClassifier(Algorithm):
         pred = self.model.predict(X, **kwargs)
         return self.classes_[pred]
 
+    def clone(self, **kwargs):
+        return MLPClassifier(
+            *self._args, seed=self._kwargs['random_state'], epochs=self._kwargs['max_iter'],
+            **self._kwargs, **kwargs)
+
 
 class History():
     def __init__(self):

@@ -14,6 +14,9 @@ class Heuristic(Algorithm):
         self.one_class = one_class
         self.mapping = (mapping or Heuristic.last_movement).__get__(self, Heuristic)
 
+    def supports_seed(self):
+        return False
+
     def can_handle_time_dim(self):
         return False
 

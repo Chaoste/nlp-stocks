@@ -18,6 +18,7 @@ class SimpleLSTM(Algorithm):
         kwargs['epochs'] = kwargs.get('epochs', 50)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
+        self.name_suffix = name_suffix
         self.ignore_features = ignore_features
         self.n_timestamps = n_timestamps
         self.n_features = n_features - len(self.ignore_features)
@@ -52,7 +53,7 @@ class SimpleLSTM(Algorithm):
         if X is not None:
             # _X = X.reshape((*X.shape, 1))
             kept_features = [f for f in range(X.shape[2]) if f not in self.ignore_features and
-                             (f-self.n_features) not in self.ignore_features]
+                             (f-self.n_features-len(self.ignore_features)) not in self.ignore_features]
             _X = X[:, :, kept_features]
         if y is not None:
             _y = np_utils.to_categorical(y + 1)
@@ -94,11 +95,6 @@ class SimpleLSTM(Algorithm):
             X, X_val, y, y_val = train_test_split(
                 X, y, test_size=val_split, shuffle=False, stratify=None,
                 random_state=self.seed)
-            print(X.shape, X_val.shape)
-            print(X[0][0])
-            print(y[0][0])
-            print(X_val[0][0])
-            print(y_val[0][0])
             # X, y = shuffle(X, y, random_state=self.seed)
             # X_val, y_val = shuffle(X_val, y_val, random_state=self.seed)
             kwargs['validation_split'] = 0
@@ -110,3 +106,12 @@ class SimpleLSTM(Algorithm):
     def predict(self, X, **kwargs):
         pred = super().predict(self.transform(X), **kwargs)
         return self.undo_transform(y=pred)
+
+    def clone(self, **kwargs):
+        return SimpleLSTM(
+            name_suffix=self.name_suffix, n_timestamps=self.n_timestamps, shuffle=self.shuffle,
+            n_features=self.n_features + len(self.ignore_features), n_classes=self.n_classes,
+            n_units=self.n_units, lstm_dropout=self.lstm_dropout, rec_dropout=self.rec_dropout,
+            lr=self.lr, ignore_features=self.ignore_features,
+            batch_size=self.sk_params['batch_size'], epochs=self.sk_params['epochs'],
+            **kwargs)

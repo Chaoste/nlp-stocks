@@ -30,12 +30,18 @@ class Algorithm(KerasClassifier, metaclass=abc.ABCMeta):
         #     np.random.seed(seed)
         #     set_random_seed(seed)
 
+    def supports_seed(self):
+        return True
+
     def can_handle_time_dim(self):
         return True
 
     @abc.abstractmethod
     def __call__(self):
         pass
+
+    def clone(self):
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def fit(self, X, y, **kwargs):
@@ -55,7 +61,9 @@ class Algorithm(KerasClassifier, metaclass=abc.ABCMeta):
         return self.short_name
 
     def __repr__(self):
-        return f'{self.name}(s={self.seed})'
+        if self.supports_seed():
+            return f'{self.name}(s={self.seed})'
+        return self.name
 
 
 class TensorflowUtils(metaclass=abc.ABCMeta):
