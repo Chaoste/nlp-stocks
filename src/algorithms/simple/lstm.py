@@ -12,14 +12,15 @@ from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 class SimpleLSTM(Algorithm):
     def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=True,
-                 n_units=[128, 128], lstm_dropout=0.2, rec_dropout=0.2, lr=0.001, ignore_features=[], **kwargs):
-        kwargs['batch_size'] = kwargs.get('batch_size', 128)
-        kwargs['epochs'] = kwargs.get('epochs', 200)
+                 n_units=[16, 16], lstm_dropout=0.2, rec_dropout=0.2, lr=0.001,
+                 ignore_features=[], **kwargs):
+        kwargs['batch_size'] = kwargs.get('batch_size', 16)
+        kwargs['epochs'] = kwargs.get('epochs', 50)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
         self.ignore_features = ignore_features
         self.n_timestamps = n_timestamps
-        self.n_features = n_features
+        self.n_features = n_features - len(self.ignore_features)
         self.n_classes = n_classes
         self.n_units = n_units
         self.lr = lr
@@ -88,10 +89,16 @@ class SimpleLSTM(Algorithm):
             kwargs['validation_split'] = val_split
             X, y = self.transform(X, y)
         else:
+            # FIXME: Don't shuffle before splitting train and val set
             X, y = self.transform(X, y)
             X, X_val, y, y_val = train_test_split(
                 X, y, test_size=val_split, shuffle=False, stratify=None,
                 random_state=self.seed)
+            print(X.shape, X_val.shape)
+            print(X[0][0])
+            print(y[0][0])
+            print(X_val[0][0])
+            print(y_val[0][0])
             # X, y = shuffle(X, y, random_state=self.seed)
             # X_val, y_val = shuffle(X_val, y_val, random_state=self.seed)
             kwargs['validation_split'] = 0
