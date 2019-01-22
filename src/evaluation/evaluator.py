@@ -19,7 +19,7 @@ from ..utils import create_deep_dict
 
 class Evaluator:
     def __init__(self, name: str, datasets: list, get_predictors: callable, output_dir: {str}=None,
-                 seed: int=None, create_log_file: bool=True, store: bool=False,
+                 create_log_file: bool=True, store: bool=False,
                  n_train_samples: int=60000, n_test_samples: int=6000, downsample: bool=True):
         """
         :param datasets: list of datasets
@@ -45,7 +45,6 @@ class Evaluator:
         # Temporary results if the pipeline breaks
         self._metrics = None
         self._predictions = None
-        self.seed = seed
         self.plotter = Plotter(self.output_dir, f'figures/exp-{name}')
         self.store = store
         self.downsample = downsample
@@ -67,7 +66,6 @@ class Evaluator:
             'metrics': self.metrics,
             'results': self.results,
             'output_dir': self.output_dir,
-            'seed': int(self.seed),
         }
         with open(path, 'wb') as f:
             pickle.dump(save_dict, f)
@@ -207,5 +205,4 @@ class Evaluator:
     #     assert np.array_equal(save_dict['datasets'], my_datasets), 'Datasets should be the same'
     #
     #     self.benchmark_results = save_dict['benchmark_results']
-    #     self.seed = save_dict['seed']
     #     self.results = save_dict['results']
