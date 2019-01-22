@@ -12,14 +12,16 @@ from ..algorithm_utils import Algorithm, TQDMNotebookCallback
 
 class SimpleLSTM(Algorithm):
     def __init__(self, name_suffix='', n_timestamps=7, n_features=5, n_classes=3, shuffle=True,
-                 n_units=[128, 128], lstm_dropout=0.2, rec_dropout=0.2, lr=0.001, ignore_features=[], **kwargs):
-        kwargs['batch_size'] = kwargs.get('batch_size', 128)
-        kwargs['epochs'] = kwargs.get('epochs', 200)
+                 n_units=[16, 16], lstm_dropout=0.2, rec_dropout=0.2, lr=0.001,
+                 ignore_features=[], **kwargs):
+        kwargs['batch_size'] = kwargs.get('batch_size', 16)
+        kwargs['epochs'] = kwargs.get('epochs', 50)
         super().__init__('simple_lstm', f'SimpleLSTM{name_suffix}', f'SLSTM{name_suffix}',
                          **kwargs)
+        self.name_suffix = name_suffix
         self.ignore_features = ignore_features
         self.n_timestamps = n_timestamps
-        self.n_features = n_features
+        self.n_features = n_features - len(self.ignore_features)
         self.n_classes = n_classes
         self.n_units = n_units
         self.lr = lr
@@ -51,7 +53,7 @@ class SimpleLSTM(Algorithm):
         if X is not None:
             # _X = X.reshape((*X.shape, 1))
             kept_features = [f for f in range(X.shape[2]) if f not in self.ignore_features and
-                             (f-self.n_features) not in self.ignore_features]
+                             (f-self.n_features-len(self.ignore_features)) not in self.ignore_features]
             _X = X[:, :, kept_features]
         if y is not None:
             _y = np_utils.to_categorical(y + 1)
@@ -88,6 +90,7 @@ class SimpleLSTM(Algorithm):
             kwargs['validation_split'] = val_split
             X, y = self.transform(X, y)
         else:
+            # FIXME: Don't shuffle before splitting train and val set
             X, y = self.transform(X, y)
             X, X_val, y, y_val = train_test_split(
                 X, y, test_size=val_split, shuffle=False, stratify=None,
@@ -103,3 +106,12 @@ class SimpleLSTM(Algorithm):
     def predict(self, X, **kwargs):
         pred = super().predict(self.transform(X), **kwargs)
         return self.undo_transform(y=pred)
+
+    def clone(self, **kwargs):
+        return SimpleLSTM(
+            name_suffix=self.name_suffix, n_timestamps=self.n_timestamps, shuffle=self.shuffle,
+            n_features=self.n_features + len(self.ignore_features), n_classes=self.n_classes,
+            n_units=self.n_units, lstm_dropout=self.lstm_dropout, rec_dropout=self.rec_dropout,
+            lr=self.lr, ignore_features=self.ignore_features,
+            batch_size=self.sk_params['batch_size'], epochs=self.sk_params['epochs'],
+            **kwargs)

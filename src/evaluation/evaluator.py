@@ -34,7 +34,7 @@ class Evaluator:
         assert np.unique(self.dataset_names).size == len(self.dataset_names),\
             'Some datasets have the same name!'
         self.get_predictors = get_predictors
-        self.predictor_names = [str(x) if isinstance(x, Algorithm) else x.__class__.__name__
+        self.predictor_names = [repr(x) if isinstance(x, Algorithm) else x.__class__.__name__
                                 for x in self.get_predictors(1)]
         assert np.unique(self.predictor_names).size == len(self.predictor_names),\
             'Some predictors have the same name!'
@@ -111,25 +111,61 @@ class Evaluator:
             n_features = len(data[0].columns.levels[1])
             predictors = self.get_predictors(n_features)
             for predictor, predictor_name in zip(predictors, self.predictor_names):
-                self.logger.info(f"{'-'*10} {predictor_name} | {ds} {'-'*10}")
-                pipeline, y_pred = run_pipeline(predictor, data)
-                time.sleep(1)  # TODO: Why did I do this?
-                y_pred = y_pred.clip(-1, 1)
-                ev = self.measure_pipeline_run_results(data[3], y_pred)
-                if len(y_pred) != self.n_test_samples:
-                    self.logger.warn(
-                        f'Not enough self._predictions are available. Check the data distribution!')
-                self._predictions.loc[:len(y_pred)-1, (str(ds), predictor_name)] = y_pred
-                assert all(self._metrics.index == list(ev.keys()))
-                self._metrics.loc[:, (str(ds), predictor_name)] = ev.values()
-                self._temp_pipelines[str(ds)][predictor_name] = pipeline, y_pred
+                self._execute_predictor(ds, predictor, predictor_name, data)
         self.predictions = self._predictions
-        self.metrics = self._metrics
+        self.metrics = self._calc_metrics()
         if self.store:
             self.export_results()
             self.metrics.to_csv(os.path.join(self.output_dir, f'custom/{self.name}.csv'))
             self.plot_histories()
         return self.metrics
+
+    def _calc_metrics(self):
+        metrics = self._metrics
+        predictors = pd.DataFrame(list(metrics.columns), columns=['l1', 'l2'])
+        predictors['algo'] = [self.get_predictor(d, p).name for i, (d, p) in predictors.iterrows()]
+        merged_metrics = []
+        for (ds, algo), matches in predictors.groupby(['l1', 'algo']):
+            regarding_metrics = metrics[[(ds, x) for x in matches.l2]]
+            if regarding_metrics.shape[1] == 1:
+                merged_metrics.append((f'{ds} {algo}', *regarding_metrics.iloc[:, 0]))
+            else:
+                means = regarding_metrics.mean(axis=1)
+                stds = regarding_metrics.std(axis=1)
+        #         merged_metrics.append((f'{ds} {algo} mean', *means))
+        #         merged_metrics.append((f'{ds} {algo} std', *stds))
+                merged_metrics.append(
+                    (f'{ds} {algo}', *[f'{m} +- {s}' for m, s in zip(means, stds)]))
+        merged_metrics = pd.DataFrame(merged_metrics, columns=['predictor', *metrics.index])
+        merged_metrics.index = merged_metrics.predictor
+        merged_metrics = merged_metrics.T.iloc[1:]
+        return merged_metrics
+
+    # def _execute_predictor_with_seeds(predictor, predictor_name, data):
+    #     if predictor.supports_seed:
+    #         # TODO: for each seed clone predictor
+    #         # Store results separated (suffix for name)
+    #         # Another column for all together
+    #         # Function for not showing separate seed results
+    #         for seed in self.seeds:
+    #             predictor =
+    #             pass
+    #     else:
+    #         self._execute_predictor(predictor, predictor_name, data)
+
+    def _execute_predictor(self, ds, predictor, predictor_name, data):
+        self.logger.info(f"{'-'*10} {predictor_name} | {ds} {'-'*10}")
+        pipeline, y_pred = run_pipeline(predictor, data)
+        time.sleep(1)  # TODO: Why did I do this?
+        y_pred = y_pred.clip(-1, 1)
+        ev = self.measure_pipeline_run_results(data[3], y_pred)
+        if len(y_pred) != self.n_test_samples:
+            self.logger.warn(
+                f'Not enough self._predictions are available. Check the data distribution!')
+        self._predictions.loc[:len(y_pred)-1, (str(ds), predictor_name)] = y_pred
+        assert all(self._metrics.index == list(ev.keys()))
+        self._metrics.loc[:, (str(ds), predictor_name)] = ev.values()
+        self._temp_pipelines[str(ds)][predictor_name] = pipeline, y_pred
 
     def get_predictor(self, ds_i, predictor_i):
         ds_name = self.dataset_names[ds_i] if isinstance(ds_i, int) else ds_i

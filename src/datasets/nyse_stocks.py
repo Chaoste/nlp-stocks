@@ -89,6 +89,7 @@ class NyseStocksDataset(Dataset):
         comp_data = pd.concat([other_features, previous], axis=1)
         # Add label for sorting (splitted afterwards)
         comp_data['label'] = self.calculate_labels(comp_prices)
+        # assert False
         if self.forecast_out == 1:
             return comp_data.iloc[self.look_back:]
         return comp_data.iloc[self.look_back:-self.forecast_out+1]
@@ -133,14 +134,15 @@ class NyseStocksDataset(Dataset):
             prices = prices.merge(gspc)
         if any([x[:3] == 'vix' for x in self.features]):
             vix = self.load_vix()
-            prices = prices.merge(vix)
+            prices = prices.merge(vix, how='left', sort=False)
+            # assert False
         return prices
 
     def shape_data(self):
         prices = self.prices.copy()
         prices = self.enhance_features(prices)
         merged = []
-        grouped = prices.groupby(prices.symbol, sort=True)
+        grouped = prices.groupby(prices.symbol, sort=False)
         # companies = pd.Series(grouped.keys())
         for comp_symbol, comp_prices in tqdm(grouped):
             if self.companies is None or comp_symbol in self.companies:
