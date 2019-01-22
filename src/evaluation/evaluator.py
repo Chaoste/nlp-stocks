@@ -1,11 +1,8 @@
-# import gc
 import logging
 import itertools
 import os
 import pickle
-# import traceback
 
-# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import time
@@ -130,28 +127,14 @@ class Evaluator:
             if regarding_metrics.shape[1] == 1:
                 merged_metrics.append((f'{ds} {algo}', *regarding_metrics.iloc[:, 0]))
             else:
-                means = regarding_metrics.mean(axis=1)
-                stds = regarding_metrics.std(axis=1)
-        #         merged_metrics.append((f'{ds} {algo} mean', *means))
-        #         merged_metrics.append((f'{ds} {algo} std', *stds))
+                means = regarding_metrics.mean(axis=1).round(5)
+                stds = regarding_metrics.std(axis=1).round(5)
                 merged_metrics.append(
                     (f'{ds} {algo}', *[f'{m} +- {s}' for m, s in zip(means, stds)]))
         merged_metrics = pd.DataFrame(merged_metrics, columns=['predictor', *metrics.index])
         merged_metrics.index = merged_metrics.predictor
         merged_metrics = merged_metrics.T.iloc[1:]
         return merged_metrics
-
-    # def _execute_predictor_with_seeds(predictor, predictor_name, data):
-    #     if predictor.supports_seed:
-    #         # TODO: for each seed clone predictor
-    #         # Store results separated (suffix for name)
-    #         # Another column for all together
-    #         # Function for not showing separate seed results
-    #         for seed in self.seeds:
-    #             predictor =
-    #             pass
-    #     else:
-    #         self._execute_predictor(predictor, predictor_name, data)
 
     def _execute_predictor(self, ds, predictor, predictor_name, data):
         self.logger.info(f"{'-'*10} {predictor_name} | {ds} {'-'*10}")
