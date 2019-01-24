@@ -36,8 +36,7 @@ class Evaluator:
         temp_predictors = self.get_predictors(1)
         self.predictor_names = [repr(x) if isinstance(x, Algorithm) else x.__class__.__name__
                                 for x in temp_predictors]
-        self.pred_to_algo = dict((repr(p), p.name) for p in temp_predictors
-                                 if repr(p) != p.name)
+        self.pred_to_algo = dict((repr(p), p.name) for p in temp_predictors)
         assert np.unique(self.predictor_names).size == len(self.predictor_names),\
             'Some predictors have the same name!'
         # Algorithm names may not be unique since they do not contain a seed
@@ -197,9 +196,9 @@ class Evaluator:
     # Import metrics & predictions if this evaluator uses the same datasets and predictors
     # If you want to import old evaluators (before 22.01.2019) you need to adapt the code:
     # The save_dict will only contain dataset_names, predictor_name, metrics and output_dir
-    def import_results(self, name):
+    def import_results(self):
         output_dir = os.path.join(self.output_dir, 'evaluators')
-        path_regex = os.path.join(output_dir, f'{name}-20*.pkl')  # Wildcard should only match dates
+        path_regex = os.path.join(output_dir, f'{self.name}-20*.pkl')  # Wildcard should only match dates
         matches = glob.glob(path_regex)
         path = matches[-1]
         if len(matches) == 0:
@@ -222,4 +221,5 @@ class Evaluator:
         self.downsample = save_dict['downsample']
         self.n_train_samples = save_dict['n_train_samples']
         self.n_test_samples = save_dict['n_test_samples']
-        self.name = name
+        # self.name = name
+        return self
