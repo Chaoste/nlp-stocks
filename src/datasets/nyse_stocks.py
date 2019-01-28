@@ -8,7 +8,7 @@ from tqdm import tqdm_notebook as tqdm
 from .dataset import Dataset
 
 DATA_DIR = "data"
-NYSE_PRICES = os.path.join(DATA_DIR, 'nyse', 'prices.csv')
+NYSE_PRICES = os.path.join(DATA_DIR, 'nyse', 'prices-split-adjusted.csv')
 # TODO: Currently only using open for one less dimension
 # FEATURES = ['date', 'symbol', 'open', 'close', 'low', 'high', 'volume']
 FEATURES = ['date', 'symbol']
