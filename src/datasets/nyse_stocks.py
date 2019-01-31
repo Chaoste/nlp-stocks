@@ -119,6 +119,8 @@ class NyseStocksDataset(Dataset):
         vix.columns = [x.replace(" ", "_") for x in vix.columns]
         vix.date = pd.to_datetime(vix.date, errors='coerce')
         vix = vix[vix.date.between(START_DATE, END_DATE)]
+        if not self.incl_test:
+            vix = vix[vix.date <= FINAL_TEST_SPLIT]
         return vix
 
     def load_gspc(self):
@@ -128,6 +130,8 @@ class NyseStocksDataset(Dataset):
                         for x in gspc.columns]
         gspc.date = pd.to_datetime(gspc.date, errors='coerce')
         gspc = gspc[gspc.date.between(START_DATE, END_DATE)]
+        if not self.incl_test:
+            gspc = gspc[gspc.date <= FINAL_TEST_SPLIT]
         return gspc
 
     def enhance_features(self, prices):
