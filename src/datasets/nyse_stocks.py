@@ -20,6 +20,8 @@ TRAIN_VAL_SPLIT = pd.to_datetime('2014-01-04')
 TRAIN_TEST_SPLIT = pd.to_datetime('2016-01-04')
 END_DATE = pd.to_datetime('2016-12-30')
 
+FINAL_TEST_SPLIT = pd.to_datetime('2012-12-31')
+
 
 class NyseStocksDataset(Dataset):
     def __init__(self, name: str = 'NyseStocksDataset',
@@ -28,12 +30,14 @@ class NyseStocksDataset(Dataset):
                  look_back: int = 7,
                  forecast_out: int = 1,
                  features: List[str] = DEFAULT_TIME_FEATURES,
-                 companies: List[int] = None):
+                 companies: List[int] = None,
+                 incl_test: bool = False):
         super().__init__(name)
         self.prices = None
         self.file_path = file_path
         self.file_dir, _ = os.path.split(self.file_path)
         self.epsilon = epsilon
+        self.incl_test = incl_test
         assert look_back > 0
         self.look_back = look_back
         assert forecast_out > 0
@@ -49,7 +53,8 @@ class NyseStocksDataset(Dataset):
         prices['date'] = pd.to_datetime(prices['date'], errors='coerce')
         assert all((prices['date'] >= START_DATE) &
                    (prices['date'] <= END_DATE))
-
+        if not self.incl_test:
+            prices = prices[prices.date <= FINAL_TEST_SPLIT]
         self.prices = prices
         X, y = self.shape_data()
         X_train = X[X['date'] < TRAIN_TEST_SPLIT]
