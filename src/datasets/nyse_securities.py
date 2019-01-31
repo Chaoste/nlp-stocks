@@ -39,6 +39,10 @@ class NyseSecuritiesDataset():
         securities = self.data()
         return securities[securities['Name'] == name].iloc[0]['Ticker symbol']
 
+    def get_industry(self, sym) -> str:
+        securities = self.data()
+        return securities[securities['Ticker symbol'] == symbol].iloc[0]['GICS Sector']
+
     def get_company_name(self, sym) -> str:
         securities = self.data()
         return securities[securities['Ticker symbol'] == sym].iloc[0]['Name']

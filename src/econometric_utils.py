@@ -26,6 +26,7 @@ def is_stationary(X, debug=True):  # = not able to reject null hypothesis
     return abs(kpss_stat) < abs(critical_values['5%'])
     # Same as return p_value > 0.05
 
+
 # Null hypothesis: has unit root = I(1)
 def has_unit_root(X, debug=True):  # = not able to reject null hypothesis
     # Null hypothesis: x has a unit root (= is not stationary, might be trend stationary)
@@ -69,6 +70,27 @@ def are_cointegrated(X1, X2, debug=True):  # = able to reject null hypothesis
     min_p_value = get_best_cointegration_certainty(X1, X2, debug)
 #   return abs(coint_stat) > abs(critical_values[1])
     return min_p_value < 0.05
+
+
+def moving_average(x, N, fill=True):
+    return np.concatenate([x for x in [
+        [None]*(N // 2 + N % 2)*fill,
+        np.convolve(x, np.ones((N,))/N, mode='valid'),
+        [None]*(N // 2)*fill,
+    ] if len(x)]).astype(float)
+
+
+def get_daily_rel_change(v):
+    return np.concatenate([[0], (v[1:].values / v[:-1].values) - 1])
+
+
+def get_daily_price(start, rel_v):
+    return start * (rel_v + 1).cumprod()
+
+
+def normalize(p, gspc_r):
+    r = get_daily_rel_change(p)
+    return get_daily_price(p.iloc[0], r - gspc_r)
 
 
 if __name__ == '__main__':
