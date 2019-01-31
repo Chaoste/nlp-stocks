@@ -41,7 +41,7 @@ class NyseSecuritiesDataset():
 
     def get_industry(self, sym) -> str:
         securities = self.data()
-        return securities[securities['Ticker symbol'] == symbol].iloc[0]['GICS Sector']
+        return securities[securities['Ticker symbol'] == sym].iloc[0]['GICS Sector']
 
     def get_company_name(self, sym) -> str:
         securities = self.data()
@@ -52,6 +52,11 @@ class NyseSecuritiesDataset():
 
     def get_most_similar_company(
             self, fuzzy_name, debug=False, quiet=True, acceptance_rate=0.02) -> (pd.DataFrame):
+        # Hotfix: See later hotfix for the reason of this workaround
+        if '3M' in fuzzy_name:
+            if debug:
+                return '3M Company', 0
+            return '3M Company'
         # Test on all companies: https://regex101.com/r/RfZsbU/2/
         re_comp_suffix = re.compile(
             r",?[^\w](Corp\ A|A\ Corp|\&\ Co|Svc\.Gp|Corp(?:oration|'s)?|"
@@ -72,6 +77,9 @@ class NyseSecuritiesDataset():
         if not quiet:
             print(f"---{fuzzy_name}--- {distances.iloc[0]['damerau_lev']}")
             print(distances.head())
+        # Hotfix: Levenshtein for 3M is always very short so skip it if it doesn't contain 3M
+        if distances.iloc[0]['Name'] == '3M Company' and '3M' not in fuzzy_name:
+            distances = distances.iloc[1:]
         if distances.iloc[0]['damerau_lev'] >= acceptance_rate:
             if debug:
                 return None, None

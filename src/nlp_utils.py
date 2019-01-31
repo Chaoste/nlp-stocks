@@ -1,7 +1,9 @@
+import re
+from collections import Counter
+
 import numpy as np
 import matplotlib
 from spacy import displacy
-from collections import Counter
 import en_core_web_sm
 
 from src.datasets import NyseSecuritiesDataset
@@ -55,3 +57,56 @@ def display_occurrences(doc, matched_stocks):
         'ents': hits,
         'title': None
     }, jupyter=True, options=options, style='ent', manual=True)
+
+
+remove_meta = re.compile(r'-- (.*)\n(?:--.*\n)+[\n\s]*')
+remove_meta_2 = re.compile(r'[\s\S]{0,250}(--.*\.html\s*\n)(?:[^-](?:-[^-])*|-(?:[^-]-)*){250}')
+
+
+# On the first run, the header of the article wasn't producing many FPs
+def filter_meta_matches(r, article, article_id):
+    # If there's no occurence in this article, we're done
+    if not len(r[r.article_id == article_id]):
+        return r
+    match = remove_meta.match(article.content)
+    if match:
+        article.title_start_idx = match.start(1)
+        article.title_end_idx = match.end(1)
+        article.head_end_idx = match.end()
+        return r[(r.article_id != article_id) | (r.start_idx >= article.head_end_idx) |
+                 (r.start_idx.between(article.title_start_idx, article.title_end_idx) &
+                  r.end_idx.between(article.title_start_idx, article.title_end_idx))]
+    match = remove_meta_2.match(article.content)
+    if match:
+        article.title_start_idx = -1
+        article.title_end_idx = -1
+        article.head_end_idx = match.end(1)
+        return r[(r.article_id != article_id) | (r.start_idx >= article.head_end_idx)]
+    print(f"No regex worked for article {article_id}")
+    return r
+
+
+def get_cooccurrences(occs):
+    grouped = occs.groupby(['article_id', 'stock_symbol'], sort=False)
+    occ_per_article = grouped.size().reset_index().pivot('article_id', 'stock_symbol')\
+        .fillna(0).astype(int)
+    occ_per_article.columns = occ_per_article.columns.droplevel(0)
+    comp_does_occure = (occ_per_article != 0).astype(int)
+    cooc = comp_does_occure.T.dot(comp_does_occure)
+    # comps_article_counts = np.diag(cooc)  # (occ_per_article != 0).astype(int).sum(axis=0)
+    np.fill_diagonal(cooc.values, 0)
+    cooc.index.levels[0].name = None
+    cooc.index.levels[1].name = None
+    return cooc
+
+
+def readable_cooccurrences(cooc):
+    beautified = cooc.stack()
+    beautified.index.levels[0].name = 'Comp A'
+    beautified.index.levels[1].name = 'Comp B'
+    beautified = beautified[[p[0] < p[1] for p, v in beautified.iteritems()]].nlargest(100)
+    beautified = beautified.reset_index()
+    beautified.columns = list(beautified.columns[:2]) + ['Articles']
+    beautified['Comp A'] = [f'{securities_ds.get_company_name(x)} [{x}]' for x in beautified['Comp A']]
+    beautified['Comp B'] = [f'{securities_ds.get_company_name(x)} [{x}]' for x in beautified['Comp B']]
+    return beautified
