@@ -94,7 +94,6 @@ class NyseStocksDataset(Dataset):
         comp_data = pd.concat([other_features, previous], axis=1)
         # Add label for sorting (splitted afterwards)
         comp_data['label'] = self.calculate_labels(comp_prices)
-        # assert False
         if self.forecast_out == 1:
             return comp_data.iloc[self.look_back:]
         return comp_data.iloc[self.look_back:-self.forecast_out+1]

@@ -2,6 +2,8 @@ jupyter.logs
 
 data/
 research/*.csv
+research/report
+research/plots
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
