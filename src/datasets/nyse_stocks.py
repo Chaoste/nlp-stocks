@@ -55,14 +55,11 @@ class NyseStocksDataset(Dataset):
         self.logger.debug(
             'Reading NYSE stocks data (takes about 43 seconds)...')
         prices = pd.read_csv(self.file_path)
-        print(len(prices.symbol.unique()))
         prices['date'] = pd.to_datetime(prices['date'], errors='coerce')
         assert all((prices['date'] >= START_DATE) &
                    (prices['date'] <= END_DATE))
-        print(len(prices.symbol.unique()))
         if not self.incl_test:
             prices = prices[prices.date <= FINAL_TEST_SPLIT]
-        print(len(prices.symbol.unique()))
         self.prices = prices
         X, y = self.shape_data()
         X_train = X[X['date'] < TRAIN_TEST_SPLIT]
