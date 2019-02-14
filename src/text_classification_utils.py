@@ -26,6 +26,7 @@ END_DATE = pd.to_datetime('2013-11-20')  # last reuters article
 
 def load_news(file_path, start_date):
     news = pd.read_csv(file_path, index_col=0)
+    news.date = pd.to_datetime(news.date)  # errors='coerce'
     news = news[news.date >= pd.to_datetime(start_date)]
     #  news.columns = pd.read_csv(REUTERS, index_col=0, nrows=0).columns
     news.index.name = None
@@ -33,7 +34,6 @@ def load_news(file_path, start_date):
     news = news[news.content.notna()]
     news = news[news.content.str.len() > 100]
     print('Amount after first filter:', len(news))
-    news.date = pd.to_datetime(news.date)  # errors='coerce'
     return news
 
 
@@ -109,6 +109,24 @@ def categorize_labels(mean_movements, epsilon=0.05):
     return discrete_labels
 
 # --- Classfication Utils ---------------------------------------------------- #
+
+
+def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8):
+    n_samples = len(rel_article_tuples)
+    shuffled_data = [(*x, y) for x, y in zip(rel_article_tuples, rel_labels)]
+    np.random.seed(42)
+    np.random.shuffle(shuffled_data)
+
+    contents = np.array([nlp_utils.get_plain_content(x[1]) for x in shuffled_data])
+    labels = np.array([x[2] for x in shuffled_data])
+    train_size = int(n_samples * ratio)
+    # test_size = n_samples - train_size
+
+    X_train = contents[:train_size]
+    y_train = labels[:train_size]
+    X_test = contents[train_size:]
+    y_test = labels[train_size:]
+    return X_train, y_train, X_test, y_test
 
 
 STOPLIST = set(stopwords.words('english') + list(ENGLISH_STOP_WORDS))
