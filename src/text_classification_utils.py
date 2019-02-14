@@ -6,7 +6,11 @@ import numpy as np
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.svm import LinearSVC
+from sklearn.metrics import accuracy_score, matthews_corrcoef
 
+from tqdm import tqdm_notebook as tqdm
 import spacy
 from spacy.lang.en import English
 from nltk.corpus import stopwords
@@ -27,25 +31,39 @@ END_DATE = pd.to_datetime('2013-11-20')  # last reuters article
 # ---- Text Processing ------------------------------------------------------- #
 
 
-def load_news(file_path, start_date):
-    news = pd.read_csv(file_path, index_col=0)
+def load_news(file_path=None, start_date=None, news=None, end_date=None, quiet=False):
+    # skiprows: 48000 -> 10-03-22, 47000 -> 10-02-22, 45400 -> 10-01-05
+    assert start_date is not None, 'Required parameter start_date is missing'
+    if news is None:
+        assert file_path is not None, 'If no news are given, you need to pass a file path'
+        news = pd.read_csv(file_path, index_col=0)
     news.date = pd.to_datetime(news.date)  # errors='coerce'
     news = news[news.date >= pd.to_datetime(start_date)]
+    if end_date:
+        news = news[news.date <= pd.to_datetime(end_date)]
     #  news.columns = pd.read_csv(REUTERS, index_col=0, nrows=0).columns
     news.index.name = None
-    print('Amount of news articles:', len(news))
+    if quiet:
+        print('Amount of news articles:', len(news))
     news = news[news.content.notna()]
     news = news[news.content.str.len() > 100]
-    print('Amount after first filter:', len(news))
+    if quiet:
+        print('Amount after first filter:', len(news))
     return news
+
+
+def load_news_clipped(stocks_ds, look_back, forecast, file_path=None, news=None, quiet=False):
+    stock_dates = stocks_ds.get_all_prices().date.unique()
+    stock_dates.sort()
+    min_time = stock_dates[stock_dates.argmin() + look_back + 1]
+    max_time = stock_dates[stock_dates.argmax() - forecast]
+    return load_news(file_path, min_time, news, max_time, quiet)
 
 
 def get_relevant_articles(news, occs_per_article, securities_ds, min_occ=5, quiet=True):
     for index, article in news.iterrows():
         idx = f'r{index}'
         if idx not in occs_per_article.index:
-            continue
-        if article.date > TRAIN_TEST_SPLIT:
             continue
         best_comp = occs_per_article.loc[idx].idxmax()
         if occs_per_article.loc[idx, best_comp] > min_occ:
@@ -74,15 +92,11 @@ def get_occs_per_article(occ_file_name='./reports/occurrences-reuters-v2.csv'):
     return occs_per_article
 
 
-def get_stock_price(stock_symbol, news_article, stocks_ds, look_back=30, forecast=0, test=False):
-    assert not test, 'Test set currently not supported'
+def get_stock_price(stock_symbol, news_article, stocks_ds, look_back=30, forecast=0):
     stock = stocks_ds.get_prices(stock_symbol).reset_index(drop=True)
     assert len(stock) > 0, f'Stock was empty: {stock_symbol}'
-    if news_article.date not in stock.date:
-        dates = stock.date[stock.date < news_article.date]
-        this_day = (dates - news_article.date).idxmax()
-    else:
-        this_day = (dates == news_article.date).idxmax()
+    dates = stock.date[stock.date <= news_article.date]
+    this_day = (dates - news_article.date).dt.days.idxmax()
     end = this_day + forecast
     start = max(this_day - look_back + 1, 0)
     stock = stock[stock.date.between(stock.date[start], stock.date[end])]
@@ -115,22 +129,67 @@ def categorize_labels(mean_movements, epsilon=0.05):
 # --- Classfication Utils ---------------------------------------------------- #
 
 
-def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8):
+def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8, split_after_shuffle=False, seed=42):
     n_samples = len(rel_article_tuples)
-    shuffled_data = [(*x, y) for x, y in zip(rel_article_tuples, rel_labels)]
-    np.random.seed(42)
-    np.random.shuffle(shuffled_data)
-
-    contents = np.array([nlp_utils.get_plain_content(x[1]) for x in shuffled_data])
-    labels = np.array([x[2] for x in shuffled_data])
     train_size = int(n_samples * ratio)
     # test_size = n_samples - train_size
-
-    X_train = contents[:train_size]
-    y_train = labels[:train_size]
-    X_test = contents[train_size:]
-    y_test = labels[train_size:]
+    np.random.seed(seed)
+    if split_after_shuffle:
+        shuffled_data = [(*x, y) for x, y in zip(rel_article_tuples, rel_labels)]
+        np.random.shuffle(shuffled_data)
+        contents = np.array([nlp_utils.get_plain_content(x[1]) for x in shuffled_data])
+        labels = np.array([x[2] for x in shuffled_data])
+        X_train = contents[:train_size]
+        y_train = labels[:train_size]
+        X_test = contents[train_size:]
+        y_test = labels[train_size:]
+    else:
+        contents = np.array([nlp_utils.get_plain_content(x[1]) for x in rel_article_tuples])
+        labels = np.array(rel_labels)
+        X_train = contents[:train_size]
+        y_train = labels[:train_size]
+        X_test = contents[train_size:]
+        y_test = labels[train_size:]
+        shuffled_data = list(zip(X_train, y_train))
+        np.random.shuffle(shuffled_data)
+        X_train, y_train = np.transpose(shuffled_data)
     return X_train, y_train, X_test, y_test
+
+
+def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
+        epsilon_daily_label=0.01, epsilon_overall_label=0.05,
+        min_occurrences=5):
+    stock_dates = stocks_ds.get_all_prices().date.unique()
+    stock_dates.sort()
+    look_back = abs(min(time_delta, 0))
+    forecast = abs(max(time_delta, 0))
+    print('-'*40, '\n', f'look_back={look_back}; forecast={forecast}')
+
+    # Load articles for fitting range depending on look back and forecast
+    news = load_news_clipped(stocks_ds, look_back, forecast, news=news)
+
+    # Get all articles with enough occurrences
+    rel_article_tuples = get_relevant_articles(
+        news, occs_per_article, securities_ds, min_occ=min_occurrences)
+    rel_article_tuples = [x for x in rel_article_tuples if stocks_ds.is_company_available(x[0])]
+
+    continuous_labels = np.array([get_label(*x, stocks_ds, look_back=look_back,
+                                            forecast=forecast, epsilon=epsilon_daily_label)
+                                  for x in tqdm(rel_article_tuples)])
+    discrete_labels = categorize_labels(continuous_labels, epsilon=epsilon_overall_label)
+    print('Distribution:', ''.join([f'"{cls}": {sum(discrete_labels == cls)} samples; ' for cls in [1, -1, 0]]))
+
+    X_train, y_train, X_test, y_test = split_shuffled(rel_article_tuples, discrete_labels)
+
+    vectorizer = CountVectorizer(tokenizer=tokenizeText, ngram_range=(1,1))
+    pipe = Pipeline([('cleanText', CleanTextTransformer()), ('vectorizer', vectorizer), ('clf', LinearSVC())])
+
+    pipe.fit(X_train, y_train)
+    y_pred = pipe.predict(X_test)
+
+    acc = accuracy_score(y_test, y_pred)
+    mcc = matthews_corrcoef(y_test, y_pred)
+    return (pipe, acc, mcc)
 
 
 STOPLIST = set(stopwords.words('english') + list(ENGLISH_STOP_WORDS))

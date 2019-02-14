@@ -36,19 +36,24 @@ class NyseStocksDataset(Dataset):
                  forecast_out: int = 1,
                  features: List[str] = DEFAULT_TIME_FEATURES,
                  companies: List[int] = None,
-                 incl_test: bool = False):
+                 load: bool = False,
+                 incl_test: bool = False,
+                 only_test: bool = False):
         super().__init__(name)
         self.prices = None
         self.file_path = file_path
         self.file_dir, _ = os.path.split(self.file_path)
         self.epsilon = epsilon
         self.incl_test = incl_test
+        self.only_test = only_test
         assert look_back > 0
         self.look_back = look_back
         assert forecast_out > 0
         self.forecast_out = forecast_out
         self.features = features
         self.companies = companies
+        if load:
+            self.load()
 
     def load(self):
         """Load data"""
@@ -58,8 +63,11 @@ class NyseStocksDataset(Dataset):
         prices['date'] = pd.to_datetime(prices['date'], errors='coerce')
         assert all((prices['date'] >= START_DATE) &
                    (prices['date'] <= END_DATE))
-        if not self.incl_test:
+        if self.only_test:
+            prices = prices[prices.date > FINAL_TEST_SPLIT]
+        elif not self.incl_test:
             prices = prices[prices.date <= FINAL_TEST_SPLIT]
+
         self.prices = prices
         X, y = self.shape_data()
         X_train = X[X['date'] < TRAIN_TEST_SPLIT]
@@ -123,7 +131,9 @@ class NyseStocksDataset(Dataset):
         vix.columns = [x.replace(" ", "_") for x in vix.columns]
         vix.date = pd.to_datetime(vix.date, errors='coerce')
         vix = vix[vix.date.between(START_DATE, END_DATE)]
-        if not self.incl_test:
+        if self.only_test:
+            vix = vix[vix.date > FINAL_TEST_SPLIT]
+        elif not self.incl_test:
             vix = vix[vix.date <= FINAL_TEST_SPLIT]
         return vix
 
@@ -134,7 +144,9 @@ class NyseStocksDataset(Dataset):
                         for x in gspc.columns]
         gspc.date = pd.to_datetime(gspc.date, errors='coerce')
         gspc = gspc[gspc.date.between(START_DATE, END_DATE)]
-        if not self.incl_test:
+        if self.only_test:
+            gspc = gspc[gspc.date > FINAL_TEST_SPLIT]
+        elif not self.incl_test:
             gspc = gspc[gspc.date <= FINAL_TEST_SPLIT]
         return gspc
 
