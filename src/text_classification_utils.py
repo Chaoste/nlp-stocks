@@ -23,6 +23,20 @@ END_DATE = pd.to_datetime('2013-11-20')  # last reuters article
 
 # ---- Text Processing ------------------------------------------------------- #
 
+
+def load_news(file_path, start_date):
+    news = pd.read_csv(file_path, index_col=0)
+    news = news[news.date >= pd.to_datetime(start_date)]
+    #  news.columns = pd.read_csv(REUTERS, index_col=0, nrows=0).columns
+    news.index.name = None
+    print('Amount of news articles:', len(news))
+    news = news[news.content.notna()]
+    news = news[news.content.str.len() > 100]
+    print('Amount after first filter:', len(news))
+    news.date = pd.to_datetime(news.date)  # errors='coerce'
+    return news
+
+
 def get_relevant_articles(news, occs_per_article, securities_ds, min_occ=5, quiet=True):
     for index, article in news.iterrows():
         idx = f'r{index}'
