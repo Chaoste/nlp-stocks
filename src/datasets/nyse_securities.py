@@ -1,11 +1,13 @@
 import os
 import re
+import json
 import logging
 
 from pyxdameraulevenshtein import normalized_damerau_levenshtein_distance
 import pandas as pd
 
 DATA_DIR = "data"
+DATA_HIST_COMPS = os.path.join(DATA_DIR, 'nyse', 'sp500-historical-components.json')
 NYSE_SECURITIES = os.path.join(DATA_DIR, 'nyse', 'securities.csv')
 
 
@@ -48,7 +50,7 @@ class NyseSecuritiesDataset():
         return securities[securities['Ticker symbol'] == sym].iloc[0]['Name']
 
     def get_all_company_names(self) -> (pd.DataFrame):
-        return self.data()[['Ticker symbol', 'Name']].drop_duplicates('Name')
+        return self.data()[['Ticker symbol', 'Name']]  # .drop_duplicates('Name')
 
     def get_most_similar_company(
             self, fuzzy_name, debug=False, quiet=True, acceptance_rate=0.02) -> (pd.DataFrame):
@@ -125,3 +127,28 @@ class NyseSecuritiesDataset():
             (self._orig_data['Ticker symbol'].str.find('NWS') != -1) |
             (self._orig_data['Security'] == 'Under Armour')
         ]
+
+    def get_companies_without_stocks(self):
+        # prices_comps = stocks_ds.prices.symbol.unique()
+        # for _, row in securities_ds.get_all_company_names().iterrows():
+        #     if row['Ticker symbol'] not in prices_comps:
+        #         print(row['Ticker symbol'], row['Name'])
+        return ['BRK.B', 'BF.B', 'MS', 'UA']
+
+    def get_companies_without_securities(self):
+        # securities_symbols = self.get_all_company_names()['Ticker symbol'].values
+        # for symbol in prices_comps:
+        #     if symbol not in securities_symbols:
+        #         print(symbol)
+        return ['DISCK', 'FOX', 'GOOG', 'UAA', 'NWS']
+
+    def get_historical_components(self, parent_dir='.'):
+        with open(os.path.join(parent_dir, DATA_HIST_COMPS)) as f:
+            data = json.load(f)
+        return data
+
+    def get_companies_history(self, symbol, **kwargs):
+        data = self.get_historical_components(**kwargs)
+        return sorted([
+            (pd.to_datetime(entry['Date']), symbol in entry['Symbols']) for entry in data
+        ], key=lambda x: x[0])

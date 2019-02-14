@@ -21,6 +21,11 @@ TRAIN_TEST_SPLIT = pd.to_datetime('2016-01-04')
 END_DATE = pd.to_datetime('2016-12-30')
 
 FINAL_TEST_SPLIT = pd.to_datetime('2012-12-31')
+# These companies have no available stock prices before the FINAL_TEST_SPLIT
+COMPANIES_MISSING_IN_TRAIN = [
+    'ABBV', 'ALLE', 'CFG', 'COTY', 'CSRA', 'DLPH', 'EVHC', 'FB', 'FBHS', 'FTV',
+    'HCA', 'HPE', 'KHC', 'KMI', 'KORS', 'MNK', 'MPC', 'NAVI', 'NLSN', 'NWS',
+    'NWSA', 'PSX', 'PYPL', 'QRVO', 'SYF', 'TDG', 'TRIP', 'WLTW', 'WRK', 'XYL', 'ZTS']
 
 
 class NyseStocksDataset(Dataset):
@@ -50,11 +55,14 @@ class NyseStocksDataset(Dataset):
         self.logger.debug(
             'Reading NYSE stocks data (takes about 43 seconds)...')
         prices = pd.read_csv(self.file_path)
+        print(len(prices.symbol.unique()))
         prices['date'] = pd.to_datetime(prices['date'], errors='coerce')
         assert all((prices['date'] >= START_DATE) &
                    (prices['date'] <= END_DATE))
+        print(len(prices.symbol.unique()))
         if not self.incl_test:
             prices = prices[prices.date <= FINAL_TEST_SPLIT]
+        print(len(prices.symbol.unique()))
         self.prices = prices
         X, y = self.shape_data()
         X_train = X[X['date'] < TRAIN_TEST_SPLIT]
@@ -162,10 +170,13 @@ class NyseStocksDataset(Dataset):
         y = data['label']
         return X, y
 
-    def get_all_prices(self):
+    def get_all_prices(self) -> pd.DataFrame:
         self.data()
         return self.prices
 
-    def get_prices(self, stock_symbol):
+    def get_prices(self, sym: str) -> pd.DataFrame:
         self.data()
-        return self.prices[self.prices['symbol'] == stock_symbol]
+        return self.prices[self.prices['symbol'] == sym]
+
+    def is_company_available(self, sym: str) -> bool:
+        return sym not in COMPANIES_MISSING_IN_TRAIN

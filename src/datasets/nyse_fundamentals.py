@@ -23,7 +23,7 @@ class NyseFundamentalsDataset():
         """Load data"""
         self.logger.debug(
             'Reading NYSE fundamentals data (takes about ? seconds)...')
-        fundamentals = pd.read_csv(self.file_path)
+        fundamentals = pd.read_csv(self.file_path, index_col=0)
         self._data = fundamentals
 
     def data(self) -> (pd.DataFrame):

@@ -4,6 +4,7 @@ data/
 research/*.csv
 research/report
 research/plots
+research/style_file*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

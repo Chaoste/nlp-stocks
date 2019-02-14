@@ -63,27 +63,51 @@ remove_meta = re.compile(r'-- (.*)\n(?:--.*\n)+[\n\s]*')
 remove_meta_2 = re.compile(r'[\s\S]{0,250}(--.*\.html\s*\n)(?:[^-](?:-[^-])*|-(?:[^-]-)*){250}')
 
 
+def get_meta_indizes(article):
+    match = remove_meta.match(article.content)
+    if match:
+        return match.start(1), match.end(1), match.end()
+    else:
+        match = remove_meta_2.match(article.content)
+        if match:
+            return -1, -1, match.end(1)
+    return -1, -1, -1
+
+
+def enrich_with_meta_indizes(article):
+    meta_indizes = get_meta_indizes(article)
+    article.title_start_idx = meta_indizes[0]
+    article.title_end_idx = meta_indizes[1]
+    article.head_end_idx = meta_indizes[2]
+    return article
+
+
 # On the first run, the header of the article wasn't producing many FPs
 def filter_meta_matches(r, article, article_id):
     # If there's no occurence in this article, we're done
     if not len(r[r.article_id == article_id]):
         return r
-    match = remove_meta.match(article.content)
-    if match:
-        article.title_start_idx = match.start(1)
-        article.title_end_idx = match.end(1)
-        article.head_end_idx = match.end()
+    article = enrich_with_meta_indizes(article)
+    if article.title_start_idx != -1:  # First regex failed so we have no title
         return r[(r.article_id != article_id) | (r.start_idx >= article.head_end_idx) |
                  (r.start_idx.between(article.title_start_idx, article.title_end_idx) &
                   r.end_idx.between(article.title_start_idx, article.title_end_idx))]
-    match = remove_meta_2.match(article.content)
-    if match:
-        article.title_start_idx = -1
-        article.title_end_idx = -1
-        article.head_end_idx = match.end(1)
+    elif article.head_end_idx != -1:  # Second regex failed so we know nothing
         return r[(r.article_id != article_id) | (r.start_idx >= article.head_end_idx)]
     print(f"No regex worked for article {article_id}")
     return r
+
+
+def get_plain_content(article):
+    title_start_idx, title_end_idx, head_end_idx = get_meta_indizes(article)
+    if title_start_idx != -1:
+        title = article.content[title_start_idx:title_end_idx].replace('\r', '')
+        body = article.content[head_end_idx:]
+        return f'{title}\n\n{body}'
+    if head_end_idx != -1:
+        return article.content[head_end_idx:]
+    print(f"No regex worked for article {article.name}")
+    return article.content
 
 
 def get_cooccurrences(occs):
