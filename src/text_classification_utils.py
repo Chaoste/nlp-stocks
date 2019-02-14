@@ -5,10 +5,13 @@ import numpy as np
 
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
+from sklearn.pipeline import Pipeline
 
 import spacy
 from spacy.lang.en import English
 from nltk.corpus import stopwords
+
+import src.nlp_utils as nlp_utils
 
 # import nltk
 # nltk.download()
@@ -61,6 +64,7 @@ def get_relevant_articles(news, occs_per_article, securities_ds, min_occ=5, quie
 
 # ---- Numerical Processing -------------------------------------------------- #
 
+
 def get_occs_per_article(occ_file_name='./reports/occurrences-reuters-v2.csv'):
     occs = pd.read_csv(occ_file_name, index_col=0)
     grouped = occs.groupby(['article_id', 'stock_symbol'], sort=False)
@@ -89,17 +93,17 @@ def get_stock_price(stock_symbol, news_article, stocks_ds, look_back=30, forecas
 
 
 def get_movement(rel_dist, epsilon=0.01):
-    labels = np.zeros(len(rel_dist))
+    labels = np.zeros_like(rel_dist)
     labels[rel_dist < -epsilon] = -1
     labels[rel_dist > epsilon] = 1
     return labels
 
 
-def get_label(*args, **kwargs):
+def get_label(*args, epsilon=0.01, **kwargs):
     prices = get_stock_price(*args, **kwargs)
     rel_dist = prices.close / prices.open - 1
-    prices['movement'] = get_movement(rel_dist)
-    return prices.movement.mean()
+    return get_movement(rel_dist, epsilon=epsilon).mean()
+    # return get_movement(np.array(rel_dist.mean()))
 
 
 def categorize_labels(mean_movements, epsilon=0.05):
@@ -175,3 +179,20 @@ def printNMostInformative(vectorizer, clf, N):
     print("Class 2 best: ")
     for feat in topClass2:
         print(feat)
+
+
+def inspect_results(vectorizer, clf, X_train, y_train, X_test, y_test):
+    # Print 10 best words for 2 classes
+    print("Top 10 features used to predict: ")
+    printNMostInformative(vectorizer, clf, 10)
+    # Get counts of each word
+    vect_pipe = Pipeline([('cleanText', CleanTextTransformer()), ('vectorizer', vectorizer)])
+    print("Training #2...")
+    transform = vect_pipe.fit_transform(X_train, y_train)
+    vocab = vectorizer.get_feature_names()
+    for i in range(len(X_train)):
+        s = ""
+        indexIntoVocab = transform.indices[transform.indptr[i]:transform.indptr[i+1]]
+        numOccurences = transform.data[transform.indptr[i]:transform.indptr[i+1]]
+        for idx, num in zip(indexIntoVocab, numOccurences):
+            s += str((vocab[idx], num))
