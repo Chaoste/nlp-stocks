@@ -176,7 +176,9 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
     continuous_labels = np.array([get_label(*x, stocks_ds, look_back=look_back,
                                             forecast=forecast, epsilon=epsilon_daily_label)
                                   for x in tqdm(rel_article_tuples)])
+    print(continuous_labels)
     discrete_labels = categorize_labels(continuous_labels, epsilon=epsilon_overall_label)
+    print(discrete_labels)
     print('Distribution:', ''.join([f'"{cls}": {sum(discrete_labels == cls)} samples; ' for cls in [1, -1, 0]]))
 
     X_train, y_train, X_test, y_test = split_shuffled(rel_article_tuples, discrete_labels)
@@ -186,6 +188,8 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
 
     pipe.fit(X_train, y_train)
     y_pred = pipe.predict(X_test)
+
+    print(y_test, y_pred)
 
     acc = accuracy_score(y_test, y_pred)
     mcc = matthews_corrcoef(y_test, y_pred)
