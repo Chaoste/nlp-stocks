@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 
@@ -103,7 +103,8 @@ def get_stock_price(stock_symbol, news_article, stocks_ds, look_back=30, forecas
     stock = stock[stock.date.between(stock.date[start], stock.date[end])]
     assert len(stock) > 0, 'Stock has no data for this time'
     # print(stock.date.min(), news_article.date, stock.date.max())
-    assert len(stock) == look_back + forecast, f'Stock size is too small ({len(stock)}) for {stock_symbol} on {news_article.date}'
+    assert len(stock) == look_back + forecast,\
+        f'Stock size is too small ({len(stock)}) for {stock_symbol} on {news_article.date}'
     return stock
 
 
@@ -183,15 +184,14 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
         news, occs_per_article, securities_ds, min_occ=min_occurrences)
     rel_article_tuples = [x for x in rel_article_tuples if stocks_ds.is_company_available(x[0])]
 
-    continuous_labels = np.array([get_label(*x, stocks_ds, look_back=look_back,
-                                            forecast=forecast, epsilon=epsilon_daily_label)
-                                  for x in tqdm(rel_article_tuples)])
-    discrete_labels = categorize_labels(continuous_labels, epsilon=epsilon_overall_label)
+    discrete_labels = get_discrete_labels(
+        rel_article_tuples, stocks_ds, look_back=look_back, forecast=forecast,
+        epsilon_daily_label=epsilon_daily_label, epsilon_overall_label=epsilon_overall_label)
     print('Distribution:', ''.join([f'"{cls}": {sum(discrete_labels == cls)} samples; ' for cls in [1, -1, 0]]))
 
     X_train, y_train, X_test, y_test = split_shuffled(rel_article_tuples, discrete_labels)
 
-    vectorizer = CountVectorizer(tokenizer=tokenizeText, ngram_range=(1,1))
+    vectorizer = TfidfVectorizer(tokenizer=tokenizeText, ngram_range=(1, 1))
     pipe = Pipeline([('cleanText', CleanTextTransformer()), ('vectorizer', vectorizer), ('clf', LinearSVC())])
 
     pipe.fit(X_train, y_train)

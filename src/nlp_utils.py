@@ -83,7 +83,7 @@ def enrich_with_meta_indizes(article):
 
 
 # On the first run, the header of the article wasn't producing many FPs
-def filter_meta_matches(r, article, article_id):
+def filter_meta_matches(r, article, article_id, quiet=True):
     # If there's no occurence in this article, we're done
     if not len(r[r.article_id == article_id]):
         return r
@@ -94,11 +94,12 @@ def filter_meta_matches(r, article, article_id):
                   r.end_idx.between(article.title_start_idx, article.title_end_idx))]
     elif article.head_end_idx != -1:  # Second regex failed so we know nothing
         return r[(r.article_id != article_id) | (r.start_idx >= article.head_end_idx)]
-    print(f"No regex worked for article {article_id}")
+    if not quiet:
+        print(f"No regex worked for article {article_id}")
     return r
 
 
-def get_plain_content(article):
+def get_plain_content(article, quiet=True):
     title_start_idx, title_end_idx, head_end_idx = get_meta_indizes(article)
     if title_start_idx != -1:
         title = article.content[title_start_idx:title_end_idx].replace('\r', '')
@@ -106,7 +107,8 @@ def get_plain_content(article):
         return f'{title}\n\n{body}'
     if head_end_idx != -1:
         return article.content[head_end_idx:]
-    print(f"No regex worked for article {article.name}")
+    if not quiet:
+        print(f"No regex worked for article {article.name}")
     return article.content
 
 
