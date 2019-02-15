@@ -1,3 +1,4 @@
+import re
 import string
 
 import pandas as pd
@@ -126,6 +127,16 @@ def categorize_labels(mean_movements, epsilon=0.05):
     discrete_labels[mean_movements > epsilon] = 1
     return discrete_labels
 
+
+def get_discrete_labels(rel_article_tuples, stocks_ds, look_back=30,
+                        forecast=0, epsilon_daily_label=0.01,
+                        epsilon_overall_label=0.05):
+    continuous_labels = np.array([get_label(
+        *x, stocks_ds, look_back=look_back, forecast=forecast,
+        epsilon=epsilon_daily_label) for x in tqdm(rel_article_tuples)])
+    return categorize_labels(continuous_labels, epsilon=epsilon_overall_label)
+
+
 # --- Classfication Utils ---------------------------------------------------- #
 
 
@@ -145,15 +156,14 @@ def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8, split_after_shuffl
         y_test = labels[train_size:]
     else:
         contents = np.array([nlp_utils.get_plain_content(x[1]) for x in rel_article_tuples])
-        labels = np.array(rel_labels)
         X_train = contents[:train_size]
-        y_train = labels[:train_size]
+        y_train = rel_labels[:train_size]
         X_test = contents[train_size:]
-        y_test = labels[train_size:]
+        y_test = np.array(rel_labels[train_size:])
         shuffled_data = list(zip(X_train, y_train))
         np.random.shuffle(shuffled_data)
-        X_train, y_train = np.transpose(shuffled_data)
-    return X_train, y_train, X_test, y_test
+        X_train, y_train = zip(*shuffled_data)
+    return np.array(X_train), np.array(y_train), X_test, y_test
 
 
 def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
@@ -176,9 +186,7 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
     continuous_labels = np.array([get_label(*x, stocks_ds, look_back=look_back,
                                             forecast=forecast, epsilon=epsilon_daily_label)
                                   for x in tqdm(rel_article_tuples)])
-    print(continuous_labels)
     discrete_labels = categorize_labels(continuous_labels, epsilon=epsilon_overall_label)
-    print(discrete_labels)
     print('Distribution:', ''.join([f'"{cls}": {sum(discrete_labels == cls)} samples; ' for cls in [1, -1, 0]]))
 
     X_train, y_train, X_test, y_test = split_shuffled(rel_article_tuples, discrete_labels)
@@ -189,8 +197,6 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
     pipe.fit(X_train, y_train)
     y_pred = pipe.predict(X_test)
 
-    print(y_test, y_pred)
-
     acc = accuracy_score(y_test, y_pred)
     mcc = matthews_corrcoef(y_test, y_pred)
     return (pipe, acc, mcc)
@@ -199,6 +205,9 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
 STOPLIST = set(stopwords.words('english') + list(ENGLISH_STOP_WORDS))
 
 SYMBOLS = " ".join(string.punctuation).split(" ") + ["-", "...", "”", "”"]
+
+# WORD_WITHOUT_NUMBERS = re.compile(r'\b[^\d\W]+\b')
+WORD_WITHOUT_NUMBERS = re.compile(r'^[^\d\W]+$')
 
 
 class CleanTextTransformer(TransformerMixin):
@@ -220,15 +229,15 @@ def cleanText(text):
     return text
 
 
-def tokenizeText(sample):
+def tokenizeText(sample, min_len=2):
     tokens = parser(sample)
-    lemmas = []
-    for tok in tokens:
-        lemmas.append(tok.lemma_.lower().strip() if tok.lemma_ != "-PRON-" else tok.lower_)
-    tokens = lemmas
-    tokens = [tok for tok in tokens if tok not in STOPLIST]
-    tokens = [tok for tok in tokens if tok not in SYMBOLS]
-    return tokens
+    tokens = (tok.lemma_.lower().strip() if tok.lemma_ != "-PRON-"
+              else tok.lower_ for tok in tokens)
+    tokens = (tok for tok in tokens if len(tok) >= min_len)
+    tokens = (tok for tok in tokens if WORD_WITHOUT_NUMBERS.match(tok))
+    tokens = (tok for tok in tokens if tok not in STOPLIST)
+    tokens = (tok for tok in tokens if tok not in SYMBOLS)
+    return list(tokens)
 
 
 def printNMostInformative(vectorizer, clf, N):
