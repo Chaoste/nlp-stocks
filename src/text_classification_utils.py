@@ -62,18 +62,19 @@ def load_news_clipped(stocks_ds, look_back, forecast, file_path=None, news=None,
 
 
 def get_relevant_articles(news, occs_per_article, securities_ds, min_occ=5, quiet=True):
-    for index, article in news.iterrows():
-        idx = f'r{index}'
-        if idx not in occs_per_article.index:
-            continue
-        best_comp = occs_per_article.loc[idx].idxmax()
-        if occs_per_article.loc[idx, best_comp] > min_occ:
+    for index, article in tqdm(news.iterrows(), total=len(news)):
+        if index not in occs_per_article.index:
             if not quiet:
-                print(idx, article.content[:100].replace('\n', '|').replace('\r', '|'), occs_per_article.loc[idx].nlargest(1))
+                print(f'Article with id {index} is not in occs index ({occs_per_article.index[0]} ... {occs_per_article.index[-1]})')
+            continue
+        best_comp = occs_per_article.loc[index].idxmax()
+        if occs_per_article.loc[index, best_comp] > min_occ:
+            if not quiet:
+                print(index, article.content[:100].replace('\n', '|').replace('\r', '|'), occs_per_article.loc[index].nlargest(1))
             if best_comp in securities_ds.get_companies_without_stocks():
                 if not quiet:
-                    print(f'Ignoring result for article {idx} since {best_comp} is missing stock values')
-                two_best_comps = occs_per_article.loc[idx].nlargest(2)
+                    print(f'Ignoring result for article {index} since {best_comp} is missing stock values')
+                two_best_comps = occs_per_article.loc[index].nlargest(2)
                 if two_best_comps.iloc[1] > min_occ:
                     if not quiet:
                         print(f'Falling back to {two_best_comps.index[1]}')
@@ -97,6 +98,7 @@ def get_stock_price(stock_symbol, news_article, stocks_ds, look_back=30, forecas
     stock = stocks_ds.get_prices(stock_symbol).reset_index(drop=True)
     assert len(stock) > 0, f'Stock was empty: {stock_symbol}'
     dates = stock.date[stock.date <= news_article.date]
+    assert len(dates) > 0, f'Articles date ({news_article.date}) is out of range [{stock.date.min()}, {stock.date.max()}]'
     this_day = (dates - news_article.date).dt.days.idxmax()
     end = this_day + forecast
     start = max(this_day - look_back + 1, 0)
@@ -183,6 +185,9 @@ def run(stocks_ds, securities_ds, news, occs_per_article, time_delta=30,
     rel_article_tuples = get_relevant_articles(
         news, occs_per_article, securities_ds, min_occ=min_occurrences)
     rel_article_tuples = [x for x in rel_article_tuples if stocks_ds.is_company_available(x[0])]
+    
+    assert len(rel_article_tuples) > 0, 'No relevant article tuples'
+    assert len(rel_article_tuples) > 100, 'Not enough relevant article tuples'
 
     discrete_labels = get_discrete_labels(
         rel_article_tuples, stocks_ds, look_back=look_back, forecast=forecast,
