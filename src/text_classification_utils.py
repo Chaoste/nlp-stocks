@@ -84,7 +84,7 @@ def get_relevant_articles(news, occs_per_article, securities_ds, min_occ=5, quie
 # ---- Numerical Processing -------------------------------------------------- #
 
 
-def get_occs_per_article(occ_file_name='./reports/occurrences-reuters-v2.csv'):
+def get_occs_per_article(occ_file_name='../data/preprocessed/occurrences/occurrences.csv'):
     occs = pd.read_csv(occ_file_name, index_col=0)
     grouped = occs.groupby(['article_id', 'stock_symbol'], sort=False)
     occs_per_article = grouped.size().reset_index().pivot('article_id', 'stock_symbol')\
