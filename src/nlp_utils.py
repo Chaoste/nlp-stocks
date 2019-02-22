@@ -11,7 +11,7 @@ from src.datasets import NyseSecuritiesDataset
 
 securities_ds = NyseSecuritiesDataset(file_path='../data/nyse/securities.csv')
 companies = securities_ds.get_all_company_names()
-nlp = en_core_web_sm.load()
+nlp = en_core_web_sm.load(disable=['parser', 'tagger'])
 
 
 def find_nyse_corporations(article_text, quiet=True):
