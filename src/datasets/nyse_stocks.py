@@ -26,6 +26,25 @@ COMPANIES_MISSING_IN_TRAIN = [
     'ABBV', 'ALLE', 'CFG', 'COTY', 'CSRA', 'DLPH', 'EVHC', 'FB', 'FBHS', 'FTV',
     'HCA', 'HPE', 'KHC', 'KMI', 'KORS', 'MNK', 'MPC', 'NAVI', 'NLSN', 'NWS',
     'NWSA', 'PSX', 'PYPL', 'QRVO', 'SYF', 'TDG', 'TRIP', 'WLTW', 'WRK', 'XYL', 'ZTS']
+COMPANIES_JOINING_DURING_TRAIN = [
+    'LYB',  # 2010-04-28
+    'GM',  # 2010-11-18
+]
+COMPANIES_JOINING_DURING_TEST = [
+    'ZTS',  # 2013-02-01
+    'COTY',  # 2013-06-13
+    'MNK',  # 2013-06-17
+    'NWS', 'NWSA',  # 2013-06-19
+    'EVHC',  # 2013-08-14
+    'ALLE',  # 2013-11-18
+    'CFG', 'NAVI', 'QRVO', 'SYF',  # 2015-01-02
+    'WRK',  # 2015-06-24
+    'KHC', 'PYPL',  # 2015-07-06
+    'HPE',  # 2015-10-19
+    'CSRA',  # 2015-11-16
+    'WLTW',  # 2016-01-05
+    'FTV',  # 2016-07-05
+]
 
 
 class NyseStocksDataset(Dataset):
@@ -188,4 +207,4 @@ class NyseStocksDataset(Dataset):
         return self.prices[self.prices['symbol'] == sym]
 
     def is_company_available(self, sym: str) -> bool:
-        return sym not in COMPANIES_MISSING_IN_TRAIN
+        return sym not in COMPANIES_MISSING_IN_TRAIN and sym not in COMPANIES_JOINING_DURING_TRAIN
