@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-rm -rf /home/thomas/.jupyter
+rm -rf ~/.jupyter
 
 # Create default config at ~/.jupyter/jupyter_notebook_config.py
 jupyter notebook --generate-config
