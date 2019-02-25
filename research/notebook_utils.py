@@ -13,7 +13,11 @@ sys.path.append("..") # Adds higher directory to python modules path for importi
 
 tracemalloc.start(10)
 
-__all__ = ['tracemalloc', 'matplotlib', 'plt', 'tqdm', 'sys', 'init', 'reset_all_notebook_vars', 'inspect_snapshot_diff', 'display_top']
+__all__ = [
+    'os', 're', 'tracemalloc', 'sys',
+    'pd', 'np', 'matplotlib', 'plt', 'tqdm', 
+    'init', 'reset_all_notebook_vars', 'inspect_snapshot_diff', 'display_top'
+]
 
 
 def init():

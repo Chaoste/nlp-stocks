@@ -35,6 +35,11 @@ END_DATE = pd.to_datetime('2013-11-20')  # last reuters article
 # ---- Text Processing ------------------------------------------------------- #
 
 
+def get_index_of_first_article_in_range(news, stocks_ds):
+    # On all news: index=45335
+    return news[~(news.date >= stocks_ds.prices.date.min()).duplicated(keep='first')].iloc[1].name
+    
+
 def load_news(file_path=None, start_date=None, news=None, end_date=None, quiet=False):
     # skiprows: 48000 -> 10-03-22, 47000 -> 10-02-22, 45400 -> 10-01-05
     assert start_date is not None, 'Required parameter start_date is missing'
