@@ -136,3 +136,15 @@ def readable_cooccurrences(cooc):
     beautified['Comp A'] = [f'{securities_ds.get_company_name(x)} [{x}]' for x in beautified['Comp A']]
     beautified['Comp B'] = [f'{securities_ds.get_company_name(x)} [{x}]' for x in beautified['Comp B']]
     return beautified
+
+
+def merge_entities_and_occs(entities, occs, quiet=True):
+    tents = entities.merge(occs[['article_id', 'start_idx', 'stock_symbol']],
+                           how='left', on=['article_id', 'start_idx'])
+    if not quiet:
+        print('Frames are merged')
+    tents.stock_symbol = tents.stock_symbol.apply(lambda x: f'<{x}>' if isinstance(x, str) else x)
+    tents.stock_symbol.fillna(tents.label, inplace=True)
+    del tents['label']
+    tents.rename({'stock_symbol': 'label'}, inplace=True, axis=1)
+    return tents
