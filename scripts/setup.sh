@@ -7,10 +7,11 @@
 # cd MA
 # ./scripts/setup.sh
 
-git config --global credential.helper cache.
-pyhon3.6 -m pip install --user virtualenv
-pyhon3.6 -m virtualenv venv
-source venv/bin/activate  # Will only propagated
-pip install numpy pandas jupyter scikit-learn pyxdameraulevenshtein tqdm elasticsearch ipython-autotime keras spacy matplotlib statsmodels
+# git config --global credential.helper cache.
+# python3.6 -m pip install --user virtualenv
+# python3.6 -m virtualenv -p `which python3.6` venv
+# source venv/bin/activate  # Will only propagated
+pip install numpy pandas jupyter scikit-learn pyxdameraulevenshtein tqdm elasticsearch ipython-autotime keras spacy matplotlib statsmodels nltk
 spacy download en_core_web_sm
+python3.6 -m "import nltk; nltk.download('stopwords')"
 ./scripts/configure_jupyter.sh

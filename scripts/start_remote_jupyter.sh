@@ -7,18 +7,22 @@ function ctrl_c() {
         echo Jupyter notebook might be still running - process ID: $PID;
         read -p "Do you want to kill the jupyter process? " yn
                 case $yn in
-                        [Yy]* ) echo "Killing process!"; kill $PID;;
+                        [Yy]* ) echo "Killing process!"; kill $PID; exit;;
                         [Nn]* ) exit;;
                 esac
 }
-
 printf "\n\nStart Notebook\n" >> jupyter.logs;
 source venv/bin/activate;
-jupyter notebook &>> jupyter.logs &
+python -m jupyter notebook &>> jupyter.logs &
 PID=$!;
 IP=$(hostname -I | cut -d' ' -f1);
+
+# Use max. 4 CPUs
+cpulimit -p $PID -l 400 &
+
 echo My IP: $IP >> jupyter.logs;
 echo Jupyter process id: $PID >> jupyter.logs;
+echo Open in your browser: $IP:8899 >> jupyter.logs;
 if [ "$1" != "dont-follow" ]
 then
     tail -n 3 -f jupyter.logs;
