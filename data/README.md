@@ -21,7 +21,7 @@ ome None, possibly because the article was removed (which explains only a few of
 ### 2. S&P 500 Stock Prices (NYSE)
 
 This collection consists of the following datasets:
-- Stock Prices, Fundamentals, Securities for all 500 companies of the S&P 500 index. Source: [Kaggle NYSE](https://www.kaggle.com/dgaw
+- Stock Prices, Fundamentals, Securities for all 500 companies of the S&P 500 index from 2010 to 2016. Source: [Kaggle NYSE](https://www.kaggle.com/dgaw
 lik/nyse)
 - GSPC (Common S&P 500 Index). Source: [Kaggle SP500](https://www.kaggle.com/benjibb/sp500-since-1950)
 - VIX (CBOE Volatility Index for S&P 500). Source: [Kaggle VIX](https://www.kaggle.com/lp187q/vix-index-until-jan-202018)
