@@ -54,11 +54,20 @@ class NyseSecuritiesDataset():
 
     def get_most_similar_company(
             self, fuzzy_name, debug=False, quiet=True, acceptance_rate=0.02) -> (pd.DataFrame):
+        fuzzy_name = fuzzy_name.strip()
         # Hotfix: See later hotfix for the reason of this workaround
         if '3M' in fuzzy_name:
             if debug:
                 return '3M Company', 0
             return '3M Company'
+        companies = self.get_all_company_names()
+        # Hotfix: e.g. "JPMorgan" not recognized as "JPMorgan Chase & Co"
+        # -> If the string is fully contained by a comp name, we're done
+        direct_matches = companies.Name[companies.Name.str.contains(fuzzy_name)]
+        if len(direct_matches) == 1:
+            if debug:
+                return direct_matches.iloc[0], 0
+            return direct_matches.iloc[0]
         # Test on all companies: https://regex101.com/r/RfZsbU/2/
         re_comp_suffix = re.compile(
             r",?[^\w](Corp\ A|A\ Corp|\&\ Co|Svc\.Gp|Corp(?:oration|'s)?|"
@@ -70,7 +79,6 @@ class NyseSecuritiesDataset():
             return normalized_damerau_levenshtein_distance(
                 re_comp_suffix.sub('', row['Name']), fuzzy_name)
 
-        companies = self.get_all_company_names()
         distances = pd.DataFrame(
             companies.apply(distance, axis=1),
             columns=['damerau_lev'])

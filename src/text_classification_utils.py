@@ -38,7 +38,7 @@ END_DATE = pd.to_datetime('2013-11-20')  # last reuters article
 def get_index_of_first_article_in_range(news, stocks_ds):
     # On all news: index=45335
     return news[~(news.date >= stocks_ds.prices.date.min()).duplicated(keep='first')].iloc[1].name
-    
+
 
 def load_news(file_path=None, start_date=None, news=None, end_date=None, quiet=False):
     # skiprows: 48000 -> 10-03-22, 47000 -> 10-02-22, 45400 -> 10-01-05
@@ -197,7 +197,7 @@ def run(stocks_ds, securities_ds, occs_per_article, news=None, file_path=None,
         rel_article_tuples = itertools.islice(rel_article_tuples, max_articles)
     rel_article_tuples = list(rel_article_tuples)
     news = None  # Free space if possible
-    
+
     assert len(rel_article_tuples) > 0, 'No relevant article tuples'
     assert len(rel_article_tuples) > 100, 'Not enough relevant article tuples'
 
@@ -247,7 +247,7 @@ class DenseTransformer(TransformerMixin):
     def transform(self, X, y=None, **fit_params):
         if issparse(X):
             return X.todense()
-    
+
 
 def get_params(self, deep=True):
         return {}
@@ -267,7 +267,7 @@ def tokenizeText(sample, min_len=2):
     tokens = (tok.lemma_.lower().strip() if tok.lemma_ != "-PRON-"
               else tok.lower_ for tok in tokens)
     tokens = (tok for tok in tokens if len(tok) >= min_len)
-    tokens = (tok for tok in tokens if tok != "{<ORG>}")
+    # tokens = (tok for tok in tokens if tok != "{<ORG>}")
     tokens = (tok for tok in tokens if WORD_WITHOUT_NUMBERS.match(tok))
     tokens = (tok for tok in tokens if tok not in STOPLIST)
     tokens = (tok for tok in tokens if tok not in SYMBOLS)
