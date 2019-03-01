@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import warnings
 
 import numpy as np
@@ -47,7 +48,7 @@ def get_order_of_integration(X, debug=True):
 
 
 # Uses the augmented Engle-Granger two-step cointegration test
-def get_best_cointegration_certainty(X1, X2, debug=True):  # = able to reject null hypothesis
+def get_best_cointegration_certainty(X1, X2, debug=False):  # = able to reject null hypothesis
     X1_order = get_order_of_integration(X1, debug=False)
     X2_order = get_order_of_integration(X2, debug=False)
     if debug:
@@ -91,6 +92,16 @@ def get_daily_price(start, rel_v):
 def normalize(p, gspc_r):
     r = get_daily_rel_change(p)
     return get_daily_price(p.iloc[0], r - gspc_r)
+
+
+def get_granger_causality(x, y, lag=1):
+    matrix = np.array([y, x]).T
+    if isinstance(lag, int):
+        lag = [lag]
+    assert isinstance(lag, Iterable)
+    lags = list(lag)
+    test_result = grangercausalitytests(matrix, maxlag=max(lags), verbose=False)
+    return [test_result[x][0]['ssr_ftest'][1] for x in lags]
 
 
 if __name__ == '__main__':

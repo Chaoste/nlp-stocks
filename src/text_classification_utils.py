@@ -9,8 +9,7 @@ from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.svm import LinearSVC
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 
 from tqdm import tqdm_notebook as tqdm
@@ -179,7 +178,7 @@ def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8, split_after_shuffl
 
 def run(stocks_ds, securities_ds, occs_per_article, news=None, file_path=None,
         time_delta=30, epsilon_daily_label=0.01, epsilon_overall_label=0.05,
-        min_occurrences=5, max_articles=None, algorithm=GaussianNB()):
+        min_occurrences=5, max_articles=None, algorithm=MultinomialNB()):
     stock_dates = stocks_ds.get_all_prices().date.unique()
     stock_dates.sort()
     look_back = abs(min(time_delta, 0))
@@ -208,8 +207,9 @@ def run(stocks_ds, securities_ds, occs_per_article, news=None, file_path=None,
 
     X_train, y_train, X_test, y_test = split_shuffled(rel_article_tuples, discrete_labels)
 
-    vectorizer = TfidfVectorizer(tokenizer=tokenizeText, ngram_range=(1, 1))
-    pipe = Pipeline([('cleanText', CleanTextTransformer()), ('vectorizer', vectorizer), ('transformer', DenseTransformer()), ('clf', algorithm)])
+    vectorizer = TfidfVectorizer(tokenizer=tokenizeText, analyzer='word', ngram_range=(1, 1))
+    pipe = Pipeline([('cleanText', CleanTextTransformer()), ('vectorizer', vectorizer),
+                     ('transformer', DenseTransformer()), ('clf', algorithm)])
 
     pipe.fit(X_train, y_train)
     y_pred = pipe.predict(X_test)
@@ -258,16 +258,12 @@ def cleanText(text):
     text = text.lower()
     return text
 
-def replaceEntities():
-    pass
-
 
 def tokenizeText(sample, min_len=2):
     tokens = parser(sample)
     tokens = (tok.lemma_.lower().strip() if tok.lemma_ != "-PRON-"
               else tok.lower_ for tok in tokens)
     tokens = (tok for tok in tokens if len(tok) >= min_len)
-    # tokens = (tok for tok in tokens if tok != "{<ORG>}")
     tokens = (tok for tok in tokens if WORD_WITHOUT_NUMBERS.match(tok))
     tokens = (tok for tok in tokens if tok not in STOPLIST)
     tokens = (tok for tok in tokens if tok not in SYMBOLS)

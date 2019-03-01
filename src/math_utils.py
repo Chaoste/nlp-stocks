@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+import pandas as pd
 import numpy as np
 from sklearn.metrics import mutual_info_score
 from sklearn.neighbors import NearestNeighbors
@@ -64,9 +66,11 @@ def mutual_information_2d(x, y, sigma=1, normalized=False):
 # https://stackoverflow.com/a/20505476/4816930
 
 def shan_entropy(c):
+    if isinstance(c, pd.Series):
+        c = c.values
     c_normalized = c / float(np.sum(c))
     c_normalized = c_normalized[np.nonzero(c_normalized)]
-    H = -sum(c_normalized * np.log2(c_normalized))
+    H = -sum(c_normalized * np.log2(abs(c_normalized)))
     return H
 
 
@@ -86,7 +90,67 @@ def calc_mi_v2(x, y, bins):
     return mi / np.log(2)
 
 
-def calc_mi(x, y, **kwargs):
+def mutual_information(x, y, **kwargs):
     # return calc_mi_v1(x, y, **kwargs)
     # return calc_mi_v2(x, y, **kwargs)
     return mutual_information_2d(x, y, **kwargs)
+
+
+def auto_mutual_information(x, lag=5):
+    if isinstance(lag, int):
+        lag = [lag]
+    assert isinstance(lag, Iterable)
+    return np.array([mutual_information(x[:-i] if i != 0 else x, x[i:]) for i in lag])
+
+
+# According to Dionisio 2004
+def normalized_mutual_information(x, y, **kwargs):
+    # adjusted_mutual_info_score?
+    mi = mutual_information(x, y, **kwargs)
+    return np.sqrt(1-np.exp(-2*mi))
+
+
+# m represents the length of compared run of data, r specifies a filtering level
+# Wikipedia implementation is very inefficient (factor about ~15)
+# Src: tsfresh.feature_extraction.feature_calculators.approximate_entropy
+# Alternative: nolds.sampen (generates different results?)
+def approximate_entropy(x, m=2, r=3):
+    if not isinstance(x, (np.ndarray, pd.Series)):
+        x = np.asarray(x)
+
+    N = x.size
+    r *= np.std(x)
+    if r < 0:
+        raise ValueError("Parameter r must be positive.")
+    if N <= m+1:
+        return 0
+
+    def _phi(m):
+        x_re = np.array([x[i:i+m] for i in range(N - m + 1)])
+        C = np.sum(np.max(np.abs(x_re[:, np.newaxis] - x_re[np.newaxis, :]),
+                          axis=2) <= r, axis=0) / (N-m+1)
+        return np.sum(np.log(C)) / (N - m + 1.0)
+
+    return np.abs(_phi(m) - _phi(m + 1))
+
+
+def auto_correlation(x, lag=5):
+    if isinstance(lag, int):
+        lag = [lag]
+    assert isinstance(lag, Iterable)
+    return np.array([np.corrcoef(x[:-i], x[i:])[0, 1] if i != 0 else 1 for i in lag])
+
+
+def cross_correlation(x, y):
+    # return scipy.signal.correlate(x, y, mode='valid')
+    return np.correlate(x, y, mode='valid')[0]
+
+
+# Src: https://www.researchgate.net/post/How_can_one_calculate_normalized_cross_correlation_between_two_arrays
+def normalized_cross_correlation(x, y):
+    # return np.corrcoef(X, Y)[0, 1]
+    N = len(x)
+    x_mean, x_var = np.mean(x), np.var(x)
+    y_mean, y_var = np.mean(y), np.var(y)
+    return (1/N) * sum([(x[n] - x_mean) * (y[n] - y_mean) for n in range(N)]) / \
+        np.sqrt(x_var * y_var)

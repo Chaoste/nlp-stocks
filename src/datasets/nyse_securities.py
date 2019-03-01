@@ -14,12 +14,14 @@ NYSE_SECURITIES = os.path.join(DATA_DIR, 'nyse', 'securities.csv')
 class NyseSecuritiesDataset():
 
     def __init__(self, name: str = 'NyseSecuritiesDataset',
-                 file_path: str = NYSE_SECURITIES):
+                 file_path: str = NYSE_SECURITIES, load: bool = False):
         self.name = name
         self._orig_data = None
         self._data = None
         self.file_path = file_path
         self.logger = logging.getLogger(__name__)
+        if load:
+            self.load()
 
     def __str__(self) -> str:
         return self.name
