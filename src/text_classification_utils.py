@@ -5,6 +5,7 @@ import itertools
 import pandas as pd
 import numpy as np
 
+import gensim
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from sklearn.pipeline import Pipeline
@@ -49,7 +50,6 @@ def load_news(file_path=None, start_date=None, news=None, end_date=None, quiet=F
     news = news[news.date >= pd.to_datetime(start_date)]
     if end_date:
         news = news[news.date <= pd.to_datetime(end_date)]
-    #  news.columns = pd.read_csv(REUTERS, index_col=0, nrows=0).columns
     news.index.name = None
     if quiet:
         print('Amount of news articles:', len(news))
@@ -63,7 +63,7 @@ def load_news(file_path=None, start_date=None, news=None, end_date=None, quiet=F
 def load_news_clipped(stocks_ds, look_back, forecast, file_path=None, news=None, quiet=False):
     stock_dates = stocks_ds.get_all_prices().date.unique()
     stock_dates.sort()
-    min_time = stock_dates[stock_dates.argmin() + look_back + 1]
+    min_time = stock_dates[stock_dates.argmin() + look_back]
     max_time = stock_dates[stock_dates.argmax() - forecast]
     return load_news(file_path, min_time, news, max_time, quiet)
 
@@ -150,25 +150,30 @@ def get_discrete_labels(rel_article_tuples, stocks_ds, look_back=30,
 # --- Classfication Utils ---------------------------------------------------- #
 
 
-def split_shuffled(rel_article_tuples, rel_labels, ratio=0.8, split_after_shuffle=False, seed=42):
-    n_samples = len(rel_article_tuples)
+def split_shuffled(rel_articles, rel_labels, ratio=0.8, split_after_shuffle=False, seed=None):
+    n_samples = len(rel_articles)
     train_size = int(n_samples * ratio)
     # test_size = n_samples - train_size
-    np.random.seed(seed)
+    if isinstance(rel_articles[0], tuple):
+        # Tuple shape: (stock_symbol, article)
+        rel_articles = np.array([nlp_utils.get_plain_content(x[1]) for x in rel_articles])
+    if isinstance(rel_articles, pd.DataFrame):
+        # else the article contents are already given as word vectors but may as DataFrame
+        rel_articles = rel_articles.values
+    if seed:
+        np.random.seed(seed)
     if split_after_shuffle:
-        shuffled_data = [(*x, y) for x, y in zip(rel_article_tuples, rel_labels)]
+        shuffled_data = list(zip(rel_articles, rel_labels))
         np.random.shuffle(shuffled_data)
-        contents = np.array([nlp_utils.get_plain_content(x[1]) for x in shuffled_data])
-        labels = np.array([x[2] for x in shuffled_data])
+        contents, labels = zip(*shuffled_data)
         X_train = contents[:train_size]
         y_train = labels[:train_size]
         X_test = contents[train_size:]
         y_test = labels[train_size:]
     else:
-        contents = np.array([nlp_utils.get_plain_content(x[1]) for x in rel_article_tuples])
-        X_train = contents[:train_size]
+        X_train = rel_articles[:train_size]
         y_train = rel_labels[:train_size]
-        X_test = contents[train_size:]
+        X_test = rel_articles[train_size:]
         y_test = np.array(rel_labels[train_size:])
         shuffled_data = list(zip(X_train, y_train))
         np.random.shuffle(shuffled_data)
@@ -247,6 +252,43 @@ class DenseTransformer(TransformerMixin):
     def transform(self, X, y=None, **fit_params):
         if issparse(X):
             return X.todense()
+
+
+class W2VTransformer(TransformerMixin):
+    def __init__(self, wv=None, wv_path=None):
+        super().__init__()
+        if wv is None:
+            assert wv_path is not None, "If no WV is given, you need to specify where it is located"
+            print("Loading Word Embedding. For Google News this took about 10 minutes")
+            wv = gensim.models.KeyedVectors.load_word2vec_format(wv_path, binary=True)
+            wv.init_sims(replace=True)
+        self.wv = wv
+
+    def word_averaging(self, words, index):
+        all_words, mean = set(), []
+
+        for word in words:
+            if isinstance(word, np.ndarray):
+                mean.append(word)
+            elif word in self.wv.vocab:
+                mean.append(self.wv.vectors_norm[self.wv.vocab[word].index])
+                all_words.add(self.wv.vocab[word].index)
+        if not mean:
+            print(f"Vectors failed for {index}")
+            return None
+        # assert mean, f'cannot compute similarity with no input {words}'
+        mean = gensim.matutils.unitvec(np.array(mean).mean(axis=0)).astype(np.float32)
+        return mean
+
+    def transform(self, X, **transform_params):
+        processed = (cleanText(text) for text in X)
+        processed = (tokenizeText(text) for text in processed)
+        processed = [self.word_averaging(text, i) for i, text
+                     in tqdm(enumerate(processed), total=len(X))]
+        return processed
+
+    def fit(self, X, y=None, **fit_params):
+        return self
 
 
 def get_params(self, deep=True):
