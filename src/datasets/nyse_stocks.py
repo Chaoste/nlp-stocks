@@ -126,6 +126,10 @@ class NyseStocksDataset(Dataset):
         comp_data = pd.concat([other_features, previous], axis=1)
         # Add label for sorting (splitted afterwards)
         comp_data['label'] = self.calculate_labels(comp_prices)
+        comp_data['ctc'] = (comp_prices.close / comp_prices.close.shift(1))
+        comp_data['oto'] = (comp_prices.open / comp_prices.open.shift(1))
+        comp_data['otc'] = (comp_prices.close / comp_prices.open)
+        comp_data['cto'] = (comp_prices.open / comp_prices.close.shift(1))
         if self.forecast_out == 1:
             return comp_data.iloc[self.look_back:]
         return comp_data.iloc[self.look_back:-self.forecast_out+1]
@@ -146,6 +150,7 @@ class NyseStocksDataset(Dataset):
 
     def load_vix(self):
         vix = pd.read_csv(os.path.join(self.file_dir, 'vix.csv'), skiprows=1)
+        vix.reset_index(drop=True, inplace=True)
         vix.columns = [x.lower() for x in vix.columns]
         vix.columns = [x.replace(" ", "_") for x in vix.columns]
         vix.date = pd.to_datetime(vix.date, errors='coerce')
@@ -158,6 +163,7 @@ class NyseStocksDataset(Dataset):
 
     def load_gspc(self):
         gspc = pd.read_csv(os.path.join(self.file_dir, 'gspc.csv'))
+        gspc.reset_index(drop=True, inplace=True)
         gspc.columns = [x.lower() for x in gspc.columns]
         gspc.columns = [f'gspc_{x.replace(" ", "_")}' if x != 'date' else x
                         for x in gspc.columns]
@@ -192,6 +198,8 @@ class NyseStocksDataset(Dataset):
             if self.companies is None or comp_symbol in self.companies:
                 comp_data = self.shape_company_data(comp_prices)
                 merged.append(comp_data)
+        required_size = int(np.median([len(x) for x in merged]))
+        merged = [x for x in merged if len(x) == required_size]
         data = pd.concat(merged).sort_index()
         X = data.drop(columns='label', level=0)
         X.columns = X.columns.remove_unused_levels()

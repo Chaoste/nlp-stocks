@@ -81,6 +81,27 @@ def moving_average(x, N, fill=True):
     ] if len(x)]).astype(float)
 
 
+def get_granger_causality(x, y, lag=1):
+    matrix = np.array([y, x]).T
+    if isinstance(lag, int):
+        lag = [lag]
+    assert isinstance(lag, Iterable)
+    lags = list(lag)
+    test_result = grangercausalitytests(matrix, maxlag=max(lags), verbose=False)
+    return [test_result[x][0]['ssr_ftest'][1] for x in lags]
+
+
+# --------- Feature generation ----------------------------------------------- #
+
+
+def add_movements(price):
+    price['ctc'] = (price.close / price.close.shift(1))
+    price['oto'] = (price.open / price.open.shift(1))
+    price['otc'] = (price.close / price.open)
+    price['lret'] = np.log(price['otc']) * 100
+    return price[1:]
+
+
 def get_daily_rel_change(v):
     return np.concatenate([[0], (v[1:].values / v[:-1].values) - 1])
 
@@ -92,16 +113,6 @@ def get_daily_price(start, rel_v):
 def normalize(p, gspc_r):
     r = get_daily_rel_change(p)
     return get_daily_price(p.iloc[0], r - gspc_r)
-
-
-def get_granger_causality(x, y, lag=1):
-    matrix = np.array([y, x]).T
-    if isinstance(lag, int):
-        lag = [lag]
-    assert isinstance(lag, Iterable)
-    lags = list(lag)
-    test_result = grangercausalitytests(matrix, maxlag=max(lags), verbose=False)
-    return [test_result[x][0]['ssr_ftest'][1] for x in lags]
 
 
 if __name__ == '__main__':
