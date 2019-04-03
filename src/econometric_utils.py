@@ -3,7 +3,8 @@ import warnings
 
 import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
-import statsmodels.tsa.stattools as stats
+from scipy import stats
+import statsmodels.tsa.api as smt
 import statsmodels.tsa.statespace.tools as statstools
 from statsmodels.tsa.api import VAR, DynamicVAR
 
@@ -20,7 +21,7 @@ def is_stationary(X, debug=True):  # = not able to reject null hypothesis
     # Null hypothesis: x is stationary (not trend stationary); Note: test tends to reject too often
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
-        kpss_stat, p_value, lags, critical_values = stats.kpss(X)
+        kpss_stat, p_value, lags, critical_values = smt.kpss(X)
     if debug:
         print('-'*10, ' KPSS ', '-'*10,)
         print(f'{kpss_stat}, {p_value}, {lags}, {critical_values}')
@@ -31,7 +32,7 @@ def is_stationary(X, debug=True):  # = not able to reject null hypothesis
 # Null hypothesis: has unit root = I(1)
 def has_unit_root(X, debug=True):  # = not able to reject null hypothesis
     # Null hypothesis: x has a unit root (= is not stationary, might be trend stationary)
-    adf_stat, p_value, used_lag, nobs, critical_values, icbest = stats.adfuller(X)
+    adf_stat, p_value, used_lag, nobs, critical_values, icbest = smt.adfuller(X)
     if debug:
         print('-'*10, ' ADF ', '-'*10,)
         print(f'{adf_stat}, {p_value}, {used_lag}, {critical_values}')
@@ -59,7 +60,7 @@ def get_best_cointegration_certainty(X1, X2, debug=False):  # = able to reject n
     min_p_value = 1
     # Null hypothesis: X1 & X2 are not cointegrated (= is not stationary, might be trend stationary)
     for trend_type in ['c', 'ct', 'ctt']:
-        coint_stat, p_value, critical_values = stats.coint(X1, X2, trend_type, maxlag=10)
+        coint_stat, p_value, critical_values = smt.coint(X1, X2, trend_type, maxlag=10)
         if debug:
             print(f'{trend_type}: {coint_stat:.2f}, {p_value:.2f}, {critical_values}')
         min_p_value = min(min_p_value, p_value)
@@ -94,11 +95,14 @@ def get_granger_causality(x, y, lag=1):
 # --------- Feature generation ----------------------------------------------- #
 
 
-def add_movements(price):
+def add_movements(price, verbose=False):
     price['ctc'] = (price.close / price.close.shift(1))
-    price['oto'] = (price.open / price.open.shift(1))
+    price['oto'] = (price.open / price.open.shift(1))  # price.open.pct_change() + 1
     price['otc'] = (price.close / price.open)
     price['lret'] = np.log(price['otc']) * 100
+    price['boxcox'], argmll_lmbda = stats.boxcox(price['otc'])
+    if verbose:
+        print(f'Lambda for Box-Cox maximizing the Max. Likelihood: {argmll_lmbda:.2f}')
     return price[1:]
 
 

@@ -126,10 +126,10 @@ class NyseStocksDataset(Dataset):
         comp_data = pd.concat([other_features, previous], axis=1)
         # Add label for sorting (splitted afterwards)
         comp_data['label'] = self.calculate_labels(comp_prices)
-        comp_data['ctc'] = (comp_prices.close / comp_prices.close.shift(1))
-        comp_data['oto'] = (comp_prices.open / comp_prices.open.shift(1))
-        comp_data['otc'] = (comp_prices.close / comp_prices.open)
-        comp_data['cto'] = (comp_prices.open / comp_prices.close.shift(1))
+        # comp_data['ctc'] = (comp_prices.close / comp_prices.close.shift(1))
+        # comp_data['oto'] = (comp_prices.open / comp_prices.open.shift(1))
+        # comp_data['otc'] = (comp_prices.close / comp_prices.open)
+        # comp_data['cto'] = (comp_prices.open / comp_prices.close.shift(1))
         if self.forecast_out == 1:
             return comp_data.iloc[self.look_back:]
         return comp_data.iloc[self.look_back:-self.forecast_out+1]
