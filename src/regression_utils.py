@@ -156,10 +156,10 @@ def get_best_garch(ts, r=range(6), s=range(6), debug=False, model='GARCH'):
     return aic_values.max(), aic_values.idxmax()
 
 
-def get_best_arima(ts, p=range(1, 5), d=range(1), q=range(5), exog=None, debug=False):
+def get_best_arima(ts, p=range(1, 5), d=range(1), q=range(5), exog=None, debug=False, verbose=True):
     aic_values = pd.Series(index=pd.MultiIndex.from_product([p, d, q]))
-
-    for i, j, k in tqdm(list(itertools.product(p, d, q))):
+    combinations = itertools.product(p, d, q)
+    for i, j, k in (tqdm(list(combinations)) if verbose else combinations):
         try:
             tmp_mdl = smt.ARIMA(ts, exog=exog, order=(i, j, k)).fit(
                 method='mle', trend='nc'
@@ -168,8 +168,9 @@ def get_best_arima(ts, p=range(1, 5), d=range(1), q=range(5), exog=None, debug=F
         except BaseException:
             # e.g. "ValueError: The computed initial AR coefficients are not stationary" (p==q)
             continue
-    print('Best AIC: {:.4f} (worst: {:.4f}) | params: {}, {}, {}'.format(
-        aic_values.max(), aic_values.min(), *aic_values.idxmax()))
+    if verbose:
+        print('Best AIC: {:.4f} (worst: {:.4f}) | params: {}, {}, {}'.format(
+            aic_values.max(), aic_values.min(), *aic_values.idxmax()))
     if debug:
         return aic_values
     return aic_values.max(), aic_values.idxmax()

@@ -1,3 +1,6 @@
+import datetime
+import calendar
+
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -77,3 +80,20 @@ def compare_industry_players(pair, corr, industry, gspc, securities_ds):
     ax.plot(gspc[industry.index] / gspc.max() * industry.loc[:, pair].max().max(), '--', label='S&P 500 Index', alpha=0.5)
     ax.legend()
     ax.set_ylabel('Daily Opening Stock Price')
+
+
+def get_month(i):
+    return datetime.date(2000, int(i), 1).strftime('%B')
+
+
+def get_weekday(i):
+    return calendar.day_name[int(i)]
+
+
+def boxplot_monthly(r, ax=None):
+    monthly_returns = r.groupby([r.index.year.rename('year'), r.index.month.rename('month')]).mean()
+    monthly_returns = pd.DataFrame(monthly_returns.reset_index().values, columns=('year', 'month', 'return'))
+    ax = monthly_returns.boxplot(column='return', by='month', ax=ax)
+    ax.set_title('')
+    plt.xticks(monthly_returns.iloc[:12].month, [get_month(x) for x in monthly_returns.iloc[:12].month], rotation=45)
+    plt.tick_params(axis='both', which='major')
