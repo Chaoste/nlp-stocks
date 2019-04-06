@@ -27,6 +27,7 @@ COMPANIES_MISSING_IN_TRAIN = [
     'HCA', 'HPE', 'KHC', 'KMI', 'KORS', 'MNK', 'MPC', 'NAVI', 'NLSN', 'NWS',
     'NWSA', 'PSX', 'PYPL', 'QRVO', 'SYF', 'TDG', 'TRIP', 'WLTW', 'WRK', 'XYL', 'ZTS']
 COMPANIES_JOINING_DURING_TRAIN = [
+    'CHTR',  # 2010-01-05
     'LYB',  # 2010-04-28
     'GM',  # 2010-11-18
 ]
@@ -215,4 +216,5 @@ class NyseStocksDataset(Dataset):
         return self.prices[self.prices['symbol'] == sym]
 
     def is_company_available(self, sym: str) -> bool:
-        return sym not in COMPANIES_MISSING_IN_TRAIN and sym not in COMPANIES_JOINING_DURING_TRAIN
+        return sym not in COMPANIES_MISSING_IN_TRAIN and sym not in COMPANIES_JOINING_DURING_TRAIN \
+            and sym not in COMPANIES_JOINING_DURING_TEST

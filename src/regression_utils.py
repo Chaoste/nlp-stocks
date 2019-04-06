@@ -19,11 +19,11 @@ import src.plot_utils as plot
 # ------------------ Preconditions ------------------------------------------- #
 
 
-def investigate(ts, debug=False, verbose=False):
+def investigate(ts, debug=False, verbose=False, exog=None):
     unit = has_unit_root(ts, verbose)
     auto = is_autocorrelated(ts, verbose)
     normal = is_normal_distributed(ts, verbose)
-    hetero = is_heteroscedastic(ts, verbose)
+    hetero = is_heteroscedastic(ts, exog, verbose)
     breaks = has_structural_breaks(ts, verbose)
     if debug:
         print(f"Does it have a unit root? {unit:.2f}")

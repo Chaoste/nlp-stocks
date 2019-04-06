@@ -7,6 +7,7 @@ from scipy import stats
 import statsmodels.api as sm
 import scipy.stats as scs
 import statsmodels.tsa.api as smt
+import matplotlib
 import matplotlib.pyplot as plt
 
 import src.math_utils as math_utils
@@ -68,16 +69,18 @@ def plot_performance_quarterly(data_in, **kwargs):
     return year_quarters
 
 
-def compare_industry_players(pair, corr, industry, gspc, securities_ds):
+def compare_industry_players(pair, corr, industry, industry_orig, gspc, securities_ds):
     names = [securities_ds.get_company_name(x) for x in pair]
     print(f'Correlate {pair[0]} and {pair[1]}:')
     print(f'Pearson\'s r = {corr:.2f} (without preprocessing: '
-          f'{math_utils.correlation(*industry.loc[:, pair].T.values):.2f})')
+          f'{math_utils.correlation(*industry_orig.loc[:, pair].T.values):.2f})')
     # ax = price_resids.loc[:, pair].plot(figsize=(14, 4), title=f'{names[0]} vs. {names[1]}')
     # ax.set_ylabel('Box-Cox of Open-to-close')
-    ax = industry.loc[:, pair].plot(figsize=(14, 4), title=f'{names[0]} vs. {names[1]}')
-    ax.plot(industry.mean(axis=1), '--', label='Energy Industry Mean', alpha=0.5)
-    ax.plot(gspc[industry.index] / gspc.max() * industry.loc[:, pair].max().max(), '--', label='S&P 500 Index', alpha=0.5)
+    ax = industry_orig.loc[:, pair].plot(figsize=(14, 4), title=f'{names[0]} vs. {names[1]}')
+    # ax.plot(industry_orig.mean(axis=1), '--', label='Energy Industry Mean', alpha=0.5)
+    ax.plot(gspc[industry_orig.index] / gspc.max() * industry_orig.loc[:, pair].max().max(), '--', label='S&P 500 Index', alpha=0.5)
+    ax.plot(math_utils.abs_values(industry[pair[0]], industry_orig[pair[0]][0]), color='#1f77b4', ls='--', label=f'{pair[0]} [norm]')
+    ax.plot(math_utils.abs_values(industry[pair[1]], industry_orig[pair[1]][0]), color='#ff7f0e', ls='--', label=f'{pair[1]} [norm]')
     ax.legend()
     ax.set_ylabel('Daily Opening Stock Price')
 
@@ -97,3 +100,17 @@ def boxplot_monthly(r, ax=None):
     ax.set_title('')
     plt.xticks(monthly_returns.iloc[:12].month, [get_month(x) for x in monthly_returns.iloc[:12].month], rotation=45)
     plt.tick_params(axis='both', which='major')
+
+
+def _to_rgb(cmap, step, as_string=True):
+    r, g, b, _ = cmap(step)
+    if as_string:
+        return f'rgb({int(256*r)}, {int(256*g)}, {int(256*b)})'
+    return np.array((int(256*r), int(256*g), int(256*b)))
+
+
+def get_colors(ents, as_string=True):
+    cmap_name = 'Set3' if len(ents) > 8 else 'Pastel2'
+    steps = np.linspace(0, 1, 12 if len(ents) > 8 else 8)
+    cmap = matplotlib.cm.get_cmap(cmap_name)
+    return dict([(e, _to_rgb(cmap, steps[i], as_string)) for i, e in enumerate(ents)])

@@ -10,9 +10,27 @@ from scipy import ndimage
 
 # --------- Correlations ----------------------------------------------------- #
 # alias "Pearson product-moment correlation coefficient" (PPMCC)
-def correlation(x, y):
+def correlation(x, y, p=False):
+    if p:
+        return pearsonr(x, y)
     # return np.corrcoef(x, y)[0, 1]
     return pearsonr(x, y)[0]
+
+
+# Calc p manually: http://vassarstats.net/rsig.html
+def calc_t(r, df):
+    return round(r / np.sqrt((1-r**2)/df), 2)
+
+
+def calc_r(t, df):
+    return round(np.sqrt(1-(1/((t**2/df) + 1))), 2)
+
+
+# statistics for p = 0.1, p = 0.05, p = 0.01 ( p = alpha / 2 )
+# http://snobear.colorado.edu/Markw//IntroHydro/12/statistics/testchart.pdf
+t_critical_values = pd.Series([1.65, 1.96, 2.59], index=[0.1, 0.05, 0.01])
+r_critical_values = t_critical_values.apply(lambda x: calc_r(x, 500))
+
 
 # TODO: (see docs)
 
@@ -154,3 +172,9 @@ def normalized_cross_correlation(x, y):
     y_mean, y_var = np.mean(y), np.var(y)
     return (1/N) * sum([(x[n] - x_mean) * (y[n] - y_mean) for n in range(N)]) / \
         np.sqrt(x_var * y_var)
+
+
+def abs_values(pct, start=100):
+    y = pct + 1
+    y.iloc[0] = start
+    return y.cumprod()
