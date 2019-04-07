@@ -2,6 +2,7 @@ import os
 import logging
 
 import pandas as pd
+import numpy as np
 
 DATA_DIR = "data"
 NYSE_FUNDAMENTALS = os.path.join(DATA_DIR, 'nyse', 'fundamentals.csv')
@@ -34,7 +35,7 @@ class NyseFundamentalsDataset():
     def get_revenue(self, sym) -> str:
         comp = self.get_fundamentals(sym)
         if comp is None:
-            return comp
+            return np.nan
         return comp.sort_values(by='For Year').iloc[0]['Total Revenue']
 
     def get_fundamentals(self, sym) -> str:
