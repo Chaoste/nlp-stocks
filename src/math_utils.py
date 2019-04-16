@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import mutual_info_score
 from sklearn.neighbors import NearestNeighbors
+import scipy
 from scipy.stats import pearsonr
 from scipy.special import gamma, psi
 from scipy import ndimage
@@ -178,3 +179,32 @@ def abs_values(pct, start=100):
     y = pct + 1
     y.iloc[0] = start
     return y.cumprod()
+
+# ------ Distribution Check -------------------------------------------------- #
+
+
+# Source: http://www.aizac.info/simple-check-of-a-sample-against-80-distributions/
+cdfs = ["norm", "cauchy", "chi", "chi2", "f", "johnsonsb",
+        "laplace", "logistic", "maxwell", "pareto", "t", "uniform", "wald"]
+cdfs2 = ["norm", "alpha", "anglit", "arcsine", "beta", "betaprime", "bradford", "burr", "cauchy",
+         "chi", "chi2", "cosine", "dgamma", "dweibull", "erlang", "expon", "exponweib", "exponpow",
+         "fatiguelife", "foldcauchy", "f", "fisk", "foldnorm", "frechet_r", "frechet_l", "gamma",
+         "gausshyper", "genexpon", "genextreme", "gengamma", "genlogistic", "genpareto",
+         "genhalflogistic", "gilbrat", "gompertz", "gumbel_l", "gumbel_r", "halfcauchy",
+         "halflogistic", "halfnorm", "hypsecant", "invgamma", "invnorm", "invweibull", "johnsonsb",
+         "johnsonsu", "laplace", "logistic", "loggamma", "loglaplace", "lognorm", "lomax",
+         "maxwell", "mielke", "nakagami", "ncx2", "ncf", "nct", "pareto", "powerlaw",
+         "powerlognorm", "powernorm", "rdist", "reciprocal", "rayleigh", "rice", "recipinvgauss",
+         "semicircular", "t", "triang", "truncexpon", "truncnorm", "tukeylambda", "uniform",
+         "vonmises", "wald", "weibull_min", "weibull_max", "wrapcauchy", "ksone", "kstwobign"]
+
+
+def inspect_data_distributions(x, verbose=False):
+    pvalues = pd.Series(0.0, index=cdfs)
+    for cdf in cdfs:
+        parameters = eval("scipy.stats."+cdf+".fit(x)")
+        D, p = scipy.stats.kstest(x, cdf, args=parameters)
+        if verbose:
+            print(f'{cdf.ljust(16)}p: {p:.4f} D: {D:.4f}')
+        pvalues[cdf] = p
+    return pvalues

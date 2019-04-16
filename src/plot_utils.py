@@ -25,6 +25,36 @@ def compare_with_normal(data, title=None, **kwargs):
     print(f'Shapiro test (null=normal): p value = {stats.shapiro(data)[1]:.4f}')
 
 
+def compare_with_t(data, norm=True, title=None, **kwargs):
+    pd.DataFrame(data).hist(bins=100, density=True, alpha=0.6, **kwargs)
+    ax = kwargs.get('ax', plt.gca())
+    df, loc, scale = stats.t.fit(data)
+    x = np.linspace(np.min(data), np.max(data), 100)
+    ax.plot(x, stats.t.pdf(x, df, loc, scale), label='Student\'s $t$')
+    if norm:
+        mu, sigma = data.mean(), data.std()
+        ax.plot(x, stats.norm.pdf(x, mu, sigma), label=fr'$\mathcal{{N}}({mu:.2f},\,{sigma:.2f}^2)$')
+    ax.legend()
+    if title:
+        ax.set_title(title)
+    print(f'KS test (null=equal): p value = {stats.kstest(data, "t", args=(df, loc, scale))[1]:.2f}')
+
+
+def compare(data, title=None):
+    pd.DataFrame(data).hist(bins=100, density=True, alpha=0.6)
+    ax = plt.gca()
+    params = stats.laplace.fit(data)
+    x = np.linspace(np.min(data), np.max(data), 100)
+    ax.plot(x, stats.laplace.pdf(x, *params), label='Laplace')
+    mu, sigma = data.mean(), data.std()
+    ax.plot(x, stats.norm.pdf(x, mu, sigma), label=fr'$\mathcal{{N}}({mu:.2f},\,{sigma:.2f}^2)$')
+    df, loc, scale = stats.t.fit(data)
+    x = np.linspace(np.min(data), np.max(data), 100)
+    ax.plot(x, stats.t.pdf(x, df, loc, scale), label='Student\'s $t$')
+    ax.legend()
+    return ax
+
+
 def plot_normal(title='Normal Distribution', **kwargs):
     exp_norm = stats.norm.rvs(loc=0, scale=1, size=10000)
     compare_with_normal(exp_norm, title, **kwargs)
@@ -45,8 +75,8 @@ def tsplot(y, lags=30, figsize=(10, 8), style='bmh'):
 
     y.plot(ax=ts_ax)
     ts_ax.set_title('Time Series Analysis Plots')
-    smt.graphics.plot_acf(y, lags=lags, ax=acf_ax, alpha=0.5)
-    smt.graphics.plot_pacf(y, lags=lags, ax=pacf_ax, alpha=0.5)
+    smt.graphics.plot_acf(y, lags=lags, ax=acf_ax, alpha=0.05)
+    smt.graphics.plot_pacf(y, lags=lags, ax=pacf_ax, alpha=0.05)
     sm.qqplot(y, line='s', ax=qq_ax)
     qq_ax.set_title('QQ Plot')
     scs.probplot(y, sparams=(y.mean(), y.std()), plot=pp_ax)

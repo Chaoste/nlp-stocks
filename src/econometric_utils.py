@@ -99,6 +99,7 @@ def add_movements(price, verbose=False):
     price['ctc'] = (price.close / price.close.shift(1))
     price['oto'] = (price.open / price.open.shift(1))  # price.open.pct_change() + 1
     price['otc'] = (price.close / price.open)
+    price['cto'] = (price.open / price.close.shift(1))
     price['lret'] = np.log(price['otc']) * 100
     price['boxcox'], argmll_lmbda = stats.boxcox(price['otc'])
     if verbose:

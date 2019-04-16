@@ -9,9 +9,11 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import statsmodels.tsa.api as smt
 import statsmodels.stats.api as sms
-import statsmodels.formula.api as smf
+# import statsmodels.formula.api as smf
+# import statsmodels.stats.diagnostic as smsd
 from sklearn.metrics import mean_squared_error as mse
 from arch import unitroot, arch_model
+from arch.utility.testing import WaldTestStatistic
 
 import src.plot_utils as plot
 
@@ -25,14 +27,16 @@ def investigate(ts, debug=False, verbose=False, exog=None):
     normal = is_normal_distributed(ts, verbose)
     hetero = is_heteroscedastic(ts, exog, verbose)
     breaks = has_structural_breaks(ts, verbose)
+    outliers = len(get_outliers(ts, verbose))
     if debug:
         print(f"Does it have a unit root? {unit:.2f}")
         print(f"Is it auto-correlated? {auto:.2f}")
         print(f"Is it gaussian like distributed? {normal:.2f}")
         print(f"Is it heteroscedastic? {hetero:.2f}")
-        print(f"Dose it have structural breaks? {breaks:.2f}")
-    return pd.Series([unit, auto, normal, hetero, breaks],
-                     index=['unit_root', 'autocorr', 'normal_dist', 'heteroscedastic', 'breaks'])
+        print(f"Does it have structural breaks? {breaks:.2f}")
+        print(f"Amount of outliers (assuming IQR of normality): {outliers} (expected: {int(len(ts) * 0.007)})")
+    return pd.Series([unit, auto, normal, hetero, breaks, outliers],
+                     index=['unit_root', 'autocorr', 'normal_dist', 'heteroscedastic', 'breaks', 'outliers'])
 
 
 def has_unit_root(ts, verbose=False):
@@ -48,7 +52,7 @@ def has_unit_root(ts, verbose=False):
         # print(f'KPSS (null = I(0)): p-value = {smt.kpss(ts, regression="c")[1]:.4f}')
         print(f'>KPSS (null = I(0)): p value = {unitroot.KPSS(ts).pvalue:.4f}')  # tr='nc'/'c'/'ct'
         print(f'>Phillips-Perron (null = I(1)): p value = {unitroot.PhillipsPerron(ts).pvalue:.4f}')
-    return (adf + pp + kpss) / 3.0
+    return np.sum([adf, pp, kpss]) / 3.0
 
 
 def is_autocorrelated(ts, verbose=False):
@@ -64,7 +68,7 @@ def is_autocorrelated(ts, verbose=False):
         print(f">Ljung-Box-Q (null = no autocorr., lag 1): p value"
               f" = {sms.acorr_ljungbox(ts)[1][0]:.2f}")
         # Requires statsmodel Object e.g. from OLS(): sms.acorr_breusch_godfrey(ts, nlags = 2)
-    return (dw + alb) / 2.0
+    return np.sum([dw, alb]) / 2.0
 
 
 def is_normal_distributed(ts, verbose=False):
@@ -78,45 +82,140 @@ def is_normal_distributed(ts, verbose=False):
         print(f'>Shapiro-Wilk (null = gaussian): p value = {stats.shapiro(ts)[1]:.4f}')
         print(f'>D’Agostino’s K^2 (null = gaussian): p value = {stats.normaltest(ts)[1]:.4f}')
         print(f'>Anderson-Darling (null = gaussian): p value = {anderson_test(ts):.4f}')
-    return (jb + sw + dk2 + ad) / 4.0
+    return np.sum([jb, sw, dk2, ad]) / 4.0
 
 
-def is_heteroscedastic(ts, exog=None, verbose=False):
-    ea = sms.het_arch(ts)[1] <= 0.05
+def get_auto_lags(ts):
+    nobs = ts.shape[0]
+    lags = int(np.ceil(12. * np.power(nobs / 100., 1 / 4.)))
+    lags = max(min(ts.shape[0] // 2 - 1, lags), 1)
+    lag, lead = smt.lagmat(ts, lags, 'both', 'sep', False)
+    lag = sm.add_constant(lag)
+    return lead, lag
+
+
+def is_heteroscedastic(orig_ts, exog=None, verbose=False):
+    if exog is None:
+        ts, exog = get_auto_lags(orig_ts)
+    else:
+        ts, exog = orig_ts, sm.add_constant(exog)
+    # ea = sms.het_arch(orig_ts)[1] <= 0.05
+
+    wh = sms.het_white(ts, exog)[1] <= 0.05
+    bp = sms.het_breuschpagan(ts, exog)[1] <= 0.05
+
+    # Requires another independent variable responsible for the changes in variance
+    # gf = sms.het_goldfeldquandt(ts, exog)[1] <= 0.05
+
+    # Not to be used on time series
+    # le = levene_test(orig_ts) <= 0.05
+    # fl = fligner_test(orig_ts) <= 0.05
+    # wa = wald_test(orig_ts) <= 0.05
+
     if verbose:
         print("\nTest for Heteroscedastiscity:")
-        print(f'>Engle\'s ARCH (null = homosc.): p value = {sms.het_arch(ts)[1]:.4f}')
-        if exog is not None:
-            # Breusch-Pagan is sensitive to missing normality, White is less sensitive
-            print(f'>Goldfeld-Quandt (null = homosc.): p value = {sms.het_goldfeldquandt(ts, sm.add_constant(exog))[1]:.4f}')
-            print(f'>Breusch-Pagan (null = homosc.): p value = {sms.het_white(ts, sm.add_constant(exog))[1]:.4f}')
-            print(f'>White (null = homosc.): p value = {sms.het_white(ts, sm.add_constant(exog))[1]:.4f}')
-            # print(sms.het_white(ts.shift(lag)[lag:], sm.add_constant(ts[lag:], 1)))
-            # stats.levene(ts.shift(lag)[lag:], ts[lag:])
-            print(f'>Levene (null = homosc.): p value = {stats.levene(ts, *exog.T.values)[1]:.4f}')
-    return float(ea)
+        print(f'>Engle\'s ARCH (null = homosc.): p value = {sms.het_arch(orig_ts)[1]:.4f}')
+        # Breusch-Pagan is sensitive to missing normality, White is less sensitive
+        print(f'>White (null = homosc.): p value = {sms.het_white(ts, exog)[1]:.4f}')
+        print(f'>Breusch-Pagan (null = homosc.): p value = {sms.het_breuschpagan(ts, exog)[1]:.4f}')
+        print(f'>Goldfeld-Quandt (null = homosc.): p value = {sms.het_goldfeldquandt(ts, exog)[1]:.4f}')
+        # Levene (Brown-Forsythe), Fligner is suitable for violation of normality
+        print(f'>Levene alias Brown-Forsythe (null = homosc.): p value = {levene_test(orig_ts):.4f}')
+        print(f'>Fligner-Killeen (null = homosc.): p value = {fligner_test(orig_ts):.4f}')
+        print(f'>[DEV]Wald-Test on squares (null = homosc.): p value = {wald_test(orig_ts):.4f}')
+    return np.sum([wh, bp]) / 2.0
 
 
 def inspect_seasonality(ts, freq=252):
+    temp = rcParams['figure.figsize']
     rcParams['figure.figsize'] = 12, 8
     res = smt.seasonal_decompose(ts, model='additive', freq=freq)
-    return res.plot()
+    p = res.plot()
+    rcParams['figure.figsize'] = temp
+    return p
 
 
 def has_structural_breaks(ts, verbose=False):
-    data = pd.concat([ts, ts.shift(1)], axis=1)
-    data.columns = ['Y', 'X']
-    ols = smf.ols(formula="Y ~ X", data=data)
-    ols_fit = ols.fit()
-    ols_fit.summary()
-    cusumols = sms.breaks_cusumolsresid(ols_fit.resid)[1] <= 0.05
+    ts, exog = get_auto_lags(ts)
+    res = sm.OLS(ts, exog).fit()
+    cusumols = sms.breaks_cusumolsresid(res.resid)[1] <= 0.05
     if verbose:
         print("\nTest for Structural Breaks:")
         print(f'>CUSUM test on OLS residuals (null = stable coeff): p value = '
-              f'{sms.breaks_cusumolsresid(ols_fit.resid)[1]:.4f}')
+              f'{sms.breaks_cusumolsresid(res.resid)[1]:.4f}')
     return float(cusumols)
 
 
+def get_outliers(x, norm=False, debug=False):
+    outliers = []
+    if norm:  # Normal: Outliers are outside of the confidence interval 99.3%
+        # Only 0.7% data points are usually outside of these bounds
+        iqr = stats.iqr(x)
+        lower_bound = np.percentile(x, 25) - 1.5 * iqr
+        upper_bound = np.percentile(x, 75) + 1.5 * iqr
+        expected_number = len(x) * 0.007
+    else:  # Student's t: Outliers are outside of the confidenve interval 99%
+        # loc, scale = stats.laplace.fit(x)
+        # two-sided: 99.5%=6.215, 99.9%=6.907
+        # critical_value = stats.laplace.interval(0.995)
+        df, loc, scale = stats.t.fit(x)
+        # two-sided (df=inf): 99%=2.576, 99.5%=2.807, 99.9%=3.291
+        lower_bound, upper_bound = stats.t.interval(0.995, df, loc=loc, scale=scale)
+        # lower_bound = loc - critical_value * scale
+        # upper_bound = loc + critical_value * scale
+        expected_number = len(x) * 0.005
+    for i, val in enumerate(x):
+        if val < lower_bound or val > upper_bound:
+            outliers.append(i)
+    if debug:
+        fig, axes = plt.subplots(1, 2, figsize=(8, 3))
+        pd.Series(x).plot(ax=axes[0])
+        axes[0].set_xlabel('')
+        axes[0].axhline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
+        axes[0].axhline(lower_bound, color='orange')
+        axes[0].axhline(upper_bound, color='orange')
+
+        pd.Series(x).hist(ax=axes[1], bins=100)
+        axes[1].axvline(np.percentile(x, 25), color='gray', linestyle='dashed')  # Q1
+        axes[1].axvline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
+        axes[1].axvline(np.percentile(x, 75), color='gray', linestyle='dashed')  # Q3
+        axes[1].axvline(lower_bound, color='orange')
+        axes[1].axvline(upper_bound, color='orange')
+        for idx in outliers:
+            axes[1].scatter(x[idx], 10, color='gray', alpha=0.5)
+        print(f'Expected outliers: {expected_number} (vs. {len(outliers)})')
+    return outliers
+
+
+def wald_test(ts):
+    ts, exog = get_auto_lags(ts**2)
+    nobs, lags = ts.shape[0], exog.shape[1]
+    res = sm.OLS(ts, exog).fit()
+    stat = nobs * res.rsquared
+    return WaldTestStatistic(stat, df=lags, null='homo', alternative='hetero').pval
+
+
+def chunks(l, n):
+    return list(np.array_split(list(l), len(l) // n))
+
+
+# The size of number of chunks is unclear, so we will take the mean for several sizes
+def levene_test(ts):
+    values = pd.Series(index=np.arange(10, 60, 10))
+    for sample_size in values.index:
+        values[sample_size] = stats.levene(*chunks(ts, sample_size)).pvalue
+    return values.mean()
+
+
+# Same as levene_test
+def fligner_test(ts):
+    values = pd.Series(index=np.arange(10, 60, 10))
+    for sample_size in values.index:
+        values[sample_size] = stats.fligner(*chunks(ts, sample_size)).pvalue
+    return values.mean()
+
+
+# Supposed to beat Kolmogorov-Smirnov (smsd.kstest_normal)
 def anderson_test(ts):
     anderson = stats.anderson(ts)
     n_levels = len(anderson.critical_values)
@@ -160,20 +259,78 @@ def get_best_arima(ts, p=range(1, 5), d=range(1), q=range(5), exog=None, debug=F
     aic_values = pd.Series(index=pd.MultiIndex.from_product([p, d, q]))
     combinations = itertools.product(p, d, q)
     for i, j, k in (tqdm(list(combinations)) if verbose else combinations):
+        if i == j == k == 0:
+            continue
         try:
             tmp_mdl = smt.ARIMA(ts, exog=exog, order=(i, j, k)).fit(
-                method='mle', trend='nc'
+                method='mle', trend='nc', disp=0,
             )
             aic_values[i, j, k] = tmp_mdl.aic
-        except BaseException:
-            # e.g. "ValueError: The computed initial AR coefficients are not stationary" (p==q)
+        except ValueError:
             continue
+            # e.g. "ValueError: The computed initial AR coefficients are not stationary" (p==q)
+        # except BaseException as e:
+        #     raise e
+        #     continue
     if verbose:
         print('Best AIC: {:.4f} (worst: {:.4f}) | params: {}, {}, {}'.format(
             aic_values.max(), aic_values.min(), *aic_values.idxmax()))
     if debug:
         return aic_values
     return aic_values.max(), aic_values.idxmax()
+
+
+def determine_model_params(ts, nlags=10, plot=False):
+    pacf_vals, pconfint = smt.pacf(ts, nlags=nlags, alpha=0.05)
+    pacf_vals, pconfint = pacf_vals[1:], pconfint[1:]
+    acf_vals, confint = smt.acf(ts, nlags=nlags, alpha=0.05)
+    acf_vals, confint = acf_vals[1:], confint[1:]
+    # conf = stats.norm.ppf(1. - 0.05 / 2.) * np.sqrt(1 / len(ts))
+    p, q = 0, 0
+    while np.sign(pconfint[p, 0]) == np.sign(pconfint[p, 1]):
+        p += 1
+    while np.sign(confint[q, 0]) == np.sign(confint[q, 1]):
+        q += 1
+    if plot:
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        smt.graphics.plot_acf(ts, lags=nlags, alpha=0.05, ax=axes[0])
+        axes[0].axvline(q, alpha=0.2, linestyle='dashed')
+        smt.graphics.plot_pacf(ts, lags=nlags, alpha=0.05, ax=axes[1])
+        axes[1].axvline(p, alpha=0.2, linestyle='dashed')
+    return p, q
+
+
+def model_ARMA(ts, p=None, q=None):
+    if p is None or q is None:
+        p, q = determine_model_params(ts)
+    if p != 0 or q != 0:
+        try:
+            resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
+                method='mle', trend='nc', update_freq=5, disp=0).resid
+        except ValueError as e:
+            if str(e).find('coefficients are not stationary') == -1:
+                raise
+            p += 1
+            resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
+                method='mle', trend='nc', update_freq=5, disp=0).resid
+    else:
+        resid = ts
+    return resid, p, q
+
+
+def model_GARCH(ts, r=None, s=None, debug=False):
+    if r is None or s is None:
+        r, s = determine_model_params(ts**2)
+    if r != 0 or s != 0:
+        arch_fitted = arch_model(ts, mean='Zero', vol='GARCH', p=r, q=s).fit(
+            update_freq=5, disp='off')
+        std_resid = arch_fitted.resid / arch_fitted.conditional_volatility.values
+        if debug:
+            print(arch_fitted.arch_lm_test(standardized=True))
+    else:
+        # To bring the values into the equal scale independent of a GARCH model
+        std_resid = ts / ts.std()
+    return std_resid, r, s
 
 
 def predict_rolling_forward(train_ts, val_ts, arima_params):

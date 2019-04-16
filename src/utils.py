@@ -2,6 +2,7 @@ import copy
 import re
 
 import pandas as pd
+import numpy as np
 from tabulate import tabulate
 
 
@@ -57,6 +58,10 @@ def pandas_df_to_markdown_table(df):
     empty_cells = re.compile(r"\|([ ]+)\|")
     output = empty_cells.sub(_fill_empty_cell, output)
     return output
+
+
+def corr_df_without_duplicates(df):
+    return df.mask(np.tril(np.ones(df.shape)).astype(np.bool))
 
 
 def print_metrics_as_md(path):
