@@ -99,6 +99,16 @@ def plot_performance_quarterly(data_in, **kwargs):
     return year_quarters
 
 
+def scatter_regression(x, y):
+    gradient, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    mn = np.min(x)
+    mx = np.max(x)
+    x1 = np.linspace(mn, mx, 500)
+    y1 = gradient*x1+intercept
+    plt.plot(x, y, 'o', alpha=0.4)
+    plt.plot(x1, y1, '-')
+
+
 def compare_industry_players(pair, corr, industry, industry_orig, gspc, securities_ds):
     names = [securities_ds.get_company_name(x) for x in pair]
     print(f'Correlate {pair[0]} and {pair[1]}:')

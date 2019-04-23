@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics import mutual_info_score
 from sklearn.neighbors import NearestNeighbors
 import scipy
+from scipy import stats
 from scipy.stats import pearsonr
 from scipy.special import gamma, psi
 from scipy import ndimage
@@ -19,18 +20,54 @@ def correlation(x, y, p=False):
 
 
 # Calc p manually: http://vassarstats.net/rsig.html
-def calc_t(r, df):
-    return round(r / np.sqrt((1-r**2)/df), 2)
+def r_to_t(r, df, prec=2):
+    return round(r / np.sqrt((1-r**2)/df), prec)
 
 
-def calc_r(t, df):
-    return round(np.sqrt(1-(1/((t**2/df) + 1))), 2)
+def t_to_r(t, df, prec=2):
+    return round(np.sqrt(1-(1/((t**2/df) + 1))), prec)
+
+
+# Derived from Wiki formulae
+def rho_to_t(rho, n, prec=2):
+    return round(rho * np.sqrt((n - 2)/(1 - rho**2)), prec)
+
+
+def t_to_rho(t, n, prec=2):
+    return round(t * np.sqrt(1/(t**2 + n - 2)), prec)
+
+
+# Derived from Wiki formulae
+def tau_to_z(tau, n, prec=2):
+    return round(3 * tau * np.sqrt(n*(n-1) / (4*n + 10)), prec)
+
+
+def z_to_tau(z, n, prec=2):
+    return round(z * np.sqrt((4*n + 10) / (n*(n-1))) / 3, prec)
 
 
 # statistics for p = 0.1, p = 0.05, p = 0.01 ( p = alpha / 2 )
 # http://snobear.colorado.edu/Markw//IntroHydro/12/statistics/testchart.pdf
-t_critical_values = pd.Series([1.65, 1.96, 2.59], index=[0.1, 0.05, 0.01])
-r_critical_values = t_critical_values.apply(lambda x: calc_r(x, 500))
+critical_steps = [0.1, 0.05, 0.01]  # 1.64, 1.96, 2.58
+
+
+def t_critical_values(prec=2):
+    return pd.Series([stats.norm.ppf(1-x/2).round(prec) for x in critical_steps],
+                     index=critical_steps)
+
+
+def r_critical_values(n, prec=2):
+    return t_critical_values(prec=prec).apply(lambda x: t_to_r(x, n, prec=prec))
+
+
+def rho_critical_values(n, prec=2):
+    return t_critical_values(prec=prec).apply(lambda x: t_to_rho(x, n, prec=prec))
+
+
+def tau_critical_values(n, prec=2):
+    return t_critical_values(prec=prec).apply(lambda x: z_to_tau(x, n, prec=prec))
+
+# Various critical values tables: http://fsjes.usmba.ac.ma/cours/touijar/Tables%20statx.pdf
 
 
 # TODO: (see docs)

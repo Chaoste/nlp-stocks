@@ -96,6 +96,7 @@ class NyseSecuritiesDataset():
             if debug:
                 return None, None
             return None
+        assert distances.iloc[0]['damerau_lev'] == 0
         if debug:
             return distances.iloc[0]['Name'], distances.iloc[0]['damerau_lev']
         return distances.iloc[0]['Name']
