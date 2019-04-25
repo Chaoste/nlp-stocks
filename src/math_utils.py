@@ -48,7 +48,7 @@ def z_to_tau(z, n, prec=2):
 
 # statistics for p = 0.1, p = 0.05, p = 0.01 ( p = alpha / 2 )
 # http://snobear.colorado.edu/Markw//IntroHydro/12/statistics/testchart.pdf
-critical_steps = [0.1, 0.05, 0.01]  # 1.64, 1.96, 2.58
+critical_steps = [0.1, 0.05, 0.01, 0.001, 0.0001]  # 1.64, 1.96, 2.58
 
 
 def t_critical_values(prec=2):

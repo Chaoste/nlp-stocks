@@ -125,6 +125,16 @@ def compare_industry_players(pair, corr, industry, industry_orig, gspc, securiti
     ax.set_ylabel('Daily Opening Stock Price')
 
 
+def plot_acf_pacf(x, sym, securities, lags=10):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+    smt.graphics.plot_acf(x, lags=lags, ax=axes[0], alpha=0.05)
+    smt.graphics.plot_pacf(x, lags=lags, ax=axes[1], alpha=0.05)
+    fig.suptitle(f'{securities.get_company_name(sym)} ({sym})')
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.8)
+    return fig, axes
+
+
 def get_month(i):
     return datetime.date(2000, int(i), 1).strftime('%B')
 

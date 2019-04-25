@@ -16,6 +16,7 @@ from arch import unitroot, arch_model
 from arch.utility.testing import WaldTestStatistic
 
 import src.plot_utils as plot
+import src.math_utils as math_utils
 
 
 # ------------------ Preconditions ------------------------------------------- #
@@ -287,9 +288,9 @@ def determine_model_params(ts, nlags=10, plot=False):
     acf_vals, confint = acf_vals[1:], confint[1:]
     # conf = stats.norm.ppf(1. - 0.05 / 2.) * np.sqrt(1 / len(ts))
     p, q = 0, 0
-    while np.sign(pconfint[p, 0]) == np.sign(pconfint[p, 1]):
+    while p < 10 and np.sign(pconfint[p, 0]) == np.sign(pconfint[p, 1]):
         p += 1
-    while np.sign(confint[q, 0]) == np.sign(confint[q, 1]):
+    while q < 10 and np.sign(confint[q, 0]) == np.sign(confint[q, 1]):
         q += 1
     if plot:
         fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -308,7 +309,8 @@ def model_ARMA(ts, p=None, q=None):
             resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
                 method='mle', trend='nc', update_freq=5, disp=0).resid
         except ValueError as e:
-            if str(e).find('coefficients are not stationary') == -1:
+            if (str(e).find('coefficients are not stationary') == -1 and
+                    str(e).find('coefficients are not invertible') == -1):
                 raise
             p += 1
             resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
@@ -485,3 +487,38 @@ def plot_garch_predictions(train_ts, val_ts, arima_params, garch_params, vol_mod
 # ------------------ Correlations -------------------------------------------- #
 # TODO: Tests on correlations:
 # https://machinelearningmastery.com/statistical-hypothesis-tests-in-python-cheat-sheet/?unapproved=477258&moderation-hash=c32b4646e3a75b228936bf39369d2155#comment-477258
+
+
+def calc_correlations(comp_symbols, comp_prices):
+    correlations = pd.DataFrame(np.nan, index=comp_symbols, columns=comp_symbols)
+    for a, b in tqdm(itertools.product(comp_symbols, comp_symbols), total=len(comp_symbols)**2):
+        if a <= b:
+            continue
+        correlations.loc[a, b] = math_utils.correlation(comp_prices.loc[:, a], comp_prices.loc[:, b])
+        correlations.loc[b, a] = correlations.loc[a, b]
+    return correlations
+
+
+def calc_all_correlations(comp_symbols, comp_resids, comp_prices, comp_orig_returns, comp_orig_prices):
+    correlations_orig_prices = calc_correlations(comp_symbols, comp_orig_prices)
+    correlations_orig_returns = calc_correlations(comp_symbols, comp_orig_returns)
+    correlations_normed = calc_correlations(comp_symbols, comp_prices)
+    correlations_resid = calc_correlations(comp_symbols, comp_resids)
+    all_correlations = pd.concat([
+        correlations_orig_prices.stack().rename('Price'),
+        correlations_orig_returns.stack().rename('Return'),
+        correlations_normed.stack().rename('Normalized'),
+        correlations_resid.stack().rename('Residuals'),
+    ], axis=1)
+    all_correlations = all_correlations[[a < b for a, b in all_correlations.index]]
+    return all_correlations
+
+
+def plot_correlations(all_correlations):
+    fig, ax = plt.subplots(figsize=(5, 3))
+    ax.violinplot(all_correlations.T)
+    ax.grid(True, color='lightgray')
+    ax.set_xticks([1, 2, 3, 4])
+    ax.set_xticklabels(all_correlations.columns.values)
+    # ax.set_title('Correlations');
+    return fig

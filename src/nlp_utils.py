@@ -121,7 +121,8 @@ def get_cooccurrences(occs, debug=False):
     return cooc
 
 
-def get_distances(comp_occ, threshold=None, min_article_length=1000):
+def get_distances(comp_occ, threshold=None, min_article_length=1000):#
+    assert comp_occ.index.max() - comp_occ.index.min() == len(comp_occ.index)-1, 'Unique index missing'
     all_comp_symbols = sorted(comp_occ.stock_symbol.unique())
     distances_sum = pd.DataFrame(0.0, index=all_comp_symbols, columns=all_comp_symbols)
     distances_count = pd.DataFrame(0, index=all_comp_symbols, columns=all_comp_symbols)
@@ -131,7 +132,6 @@ def get_distances(comp_occ, threshold=None, min_article_length=1000):
         comp_grouped = article_occs.groupby('stock_symbol')
         counts = comp_grouped.size()
         article_comps = counts.index
-
         for a, b in itertools.product(article_comps, article_comps):
             if a >= b:
                 continue
