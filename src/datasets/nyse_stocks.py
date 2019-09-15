@@ -21,6 +21,8 @@ TRAIN_TEST_SPLIT = pd.to_datetime('2016-01-04')
 END_DATE = pd.to_datetime('2016-12-30')
 
 FINAL_TEST_SPLIT = pd.to_datetime('2012-12-31')
+TEXT_END = pd.to_datetime('2013-11-29')  # last article is on 26 but we take the whole week
+
 # These companies have no available stock prices before the FINAL_TEST_SPLIT
 COMPANIES_MISSING_IN_TRAIN = [
     'ABBV', 'ALLE', 'CFG', 'COTY', 'CSRA', 'DLPH', 'EVHC', 'FB', 'FBHS', 'FTV',
@@ -83,6 +85,7 @@ class NyseStocksDataset(Dataset):
         prices['date'] = pd.to_datetime(prices['date'], errors='coerce')
         assert all((prices['date'] >= START_DATE) &
                    (prices['date'] <= END_DATE))
+        prices = prices[prices.date <= TEXT_END]
         if self.only_test:
             prices = prices[prices.date > FINAL_TEST_SPLIT]
         elif not self.incl_test:

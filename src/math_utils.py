@@ -20,12 +20,12 @@ def correlation(x, y, p=False):
 
 
 # Calc p manually: http://vassarstats.net/rsig.html
-def r_to_t(r, df, prec=2):
-    return round(r / np.sqrt((1-r**2)/df), prec)
+def r_to_t(r, n, prec=2):
+    return round(r / np.sqrt((1-r**2)/(n-2)), prec)
 
 
-def t_to_r(t, df, prec=2):
-    return round(np.sqrt(1-(1/((t**2/df) + 1))), prec)
+def t_to_r(t, n, prec=2):
+    return round(np.sqrt(1-(1/((t**2/(n-2)) + 1))), prec)
 
 
 # Derived from Wiki formulae

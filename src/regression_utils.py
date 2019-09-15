@@ -169,21 +169,25 @@ def get_outliers(x, norm=False, debug=False):
         if val < lower_bound or val > upper_bound:
             outliers.append(i)
     if debug:
-        fig, axes = plt.subplots(1, 2, figsize=(8, 3))
-        pd.Series(x).plot(ax=axes[0])
+        fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+        pd.Series(x).plot(ax=axes[0], color=plot.primary)
         axes[0].set_xlabel('')
-        axes[0].axhline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
-        axes[0].axhline(lower_bound, color='orange')
-        axes[0].axhline(upper_bound, color='orange')
+        # axes[0].axhline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
+        axes[0].axhline(lower_bound, color=plot.secondary)
+        axes[0].axhline(upper_bound, color=plot.secondary)
+        axes[0].yaxis.grid()
+        axes[0].set_ylabel('Model Residuals')
 
-        pd.Series(x).hist(ax=axes[1], bins=100)
-        axes[1].axvline(np.percentile(x, 25), color='gray', linestyle='dashed')  # Q1
-        axes[1].axvline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
-        axes[1].axvline(np.percentile(x, 75), color='gray', linestyle='dashed')  # Q3
-        axes[1].axvline(lower_bound, color='orange')
-        axes[1].axvline(upper_bound, color='orange')
+        pd.Series(x).hist(ax=axes[1], bins=100, color=plot.primary, density=True)
+        # axes[1].axvline(np.percentile(x, 25), color='gray', linestyle='dashed')  # Q1
+        # axes[1].axvline(np.percentile(x, 50), color='lightgray', linestyle='dashed')  # median
+        # axes[1].axvline(np.percentile(x, 75), color='gray', linestyle='dashed')  # Q3
+        axes[1].axvline(lower_bound, color=plot.secondary)
+        axes[1].axvline(upper_bound, color=plot.secondary)
+        axes[1].set_ylabel('Probability Density')
+        axes[1].set_xlabel('Model Residuals')
         for idx in outliers:
-            axes[1].scatter(x[idx], 10, color='gray', alpha=0.5)
+            axes[1].scatter(x[idx], 0.1, color=plot.ternary, alpha=0.5)
         print(f'Expected outliers: {expected_number} (vs. {len(outliers)})')
     return outliers
 
@@ -308,13 +312,15 @@ def model_ARMA(ts, p=None, q=None):
         try:
             resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
                 method='mle', trend='nc', update_freq=5, disp=0).resid
-        except ValueError as e:
+        except (ValueError, np.linalg.LinAlgError) as e:
             if (str(e).find('coefficients are not stationary') == -1 and
-                    str(e).find('coefficients are not invertible') == -1):
+                    str(e).find('coefficients are not invertible') == -1 and
+                    str(e).find('SVD did not converge') == -1):
+                print(p, q)
                 raise
-            p += 1
-            resid = smt.ARIMA(ts, order=(p, 0, q)).fit(
-                method='mle', trend='nc', update_freq=5, disp=0).resid
+            if p <= 11:
+                p += 1
+                return model_ARMA(ts, p, q)
     else:
         resid = ts
     return resid, p, q
@@ -515,10 +521,18 @@ def calc_all_correlations(comp_symbols, comp_resids, comp_prices, comp_orig_retu
 
 
 def plot_correlations(all_correlations):
-    fig, ax = plt.subplots(figsize=(5, 3))
-    ax.violinplot(all_correlations.T)
-    ax.grid(True, color='lightgray')
+    fig, ax = plt.subplots(figsize=(6, 4))
+    violin_parts = ax.violinplot(all_correlations.T)
+    for pc in violin_parts['bodies']:
+        pc.set_color(plot.primary)
+    for partname in ('cbars', 'cmins', 'cmaxes'):
+        vp = violin_parts[partname]
+        vp.set_color(plot.primary)
+    # ax.axhline(-crits[0.0001], color='orange', linestyle='dashed')
+    # ax.axhline(crits[0.0001], color='orange', linestyle='dashed')
+    ax.yaxis.grid(True)
     ax.set_xticks([1, 2, 3, 4])
     ax.set_xticklabels(all_correlations.columns.values)
-    # ax.set_title('Correlations');
+    ax.set_title('Stock Correlations')
+    fig.tight_layout()
     return fig

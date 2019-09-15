@@ -1,0 +1,102 @@
+- Genauer autocorrelation beschreiben, plot to describe it. describe lags
+- Examples to make tests more understandable
+- Explain four steps in advance
+- Only linear important
+- Anzahl der Kanten/Knoten vs cutoff für correlation graph
+- Graph größer, one plot: figsize=(6, 4), (9, 4)
+- Self-contained Figures & Tables
+- intro: correlation example
+
+
+Words:
+- Heteroscedastic
+- Bivariate, univariate
+- autoregression (not auto-regression)
+- autocorrelation (not auto-correlation)
+- co-occurrence (not co-mentioning)
+- occurrence
+- Stock price (not share price)
+- business connection/relation/relationship/ties (not corporate relationship)
+  - relation is more concrete
+- interdisciplinary instead of multidisciplinary
+- nonlinear (not non-linear)
+- industry-wise, market-wise
+- indices (no indexes)
+- intraday (not intra-day)
+- natural language processing and machine learning
+- foreknowledge (not pre(-)knowledge), predefined
+- cross-correlation, mutual information
+- Granger Causality
+- S\&P~500
+- intra-article, inter-article
+- spurious correlation (not spurious regression)
+- unit root (not unit-root)
+- text-based, news-based
+- between stock prices, among stock prices (between: e.g. two composites, among: e.g. a group of similar entities)
+- moving-average
+- volatility instead of variance
+- Figure/Table?
+- 1-12 ausschreiben?  ->  \D([1-9]|10|11|12)\D
+- companies -> company's
+- always "my hypothesis"
+- work (not project or paper)
+- preprocessing (not pre-processing)
+- theses -> these
+- Pairwise Distance vs. pairwise distance
+- number vs amount
+- Relationship vs Relation
+- scientists (not researchers; they are researcher in scientific disciplines )
+
+- stock correlation vs. stock cross-correlation
+- these vs. those, this vs that
+
+abbrevs:
+- EMH
+- NN, SVM, DNN
+- OLS
+- NLP?
+- autoregressive–moving-average (ARMA). Invented three times
+- autoregressive integrated moving average (ARIMA)
+
+
+
+RW:
+- Dataset selection -> crucial role (accuracy examples). Lucky-Sample-Effect
+- Crossfertilization
+-
+
+https://de.overleaf.com/learn/latex/How_to_Write_a_Thesis_in_LaTeX_(Part_3):_Figures,_Subfigures_and_Tables
+
+
+
+
+Design Science:
+• Design as an artifact: Design-science research must produce a viable artifact in the form of a construct, a model, a method, or an instantiation.
+• Problem relevance: The objective of design-science research is to develop technology-based solutions to important and relevant business problems.
+• Design evaluation: The utility, quality, and efficacy of a design artifact must be rigorously demonstrated via well-executed evaluation methods.
+• Research contributions: Effective design-science research must provide clear and verifiable contributions in the areas of the design artifact, design foundations, and/or design methodologies.
+• Research rigor: Design-science research relies upon the application of rigorous methods in both the construction and evaluation of the design artifact.
+• Design as a search process: The search for an effective artifact requires utilizing available means to reach desired ends while satisfying laws in the problem environment.
+• Communication of research: Design-science research must be presented effectively both to technology-oriented as well as management-oriented audiences.
+https://en.wikipedia.org/wiki/Design_science_(methodology)
+
+
+
+Fragen:
+
+Wo abgeben?
+Bis 2 Uhr abgeben - am Empfang oder Sicherheitsmann ist auch möglich.
+
+Dreifach gebunden - keine Ringbindung? --> Fest gebunden
+
+"Independence Declaration"
+I hereby declare that the thesis submitted is my own unaided work. All direct
+or indirect sources used are acknowledged as references.
+- Unterschrift
+- Datum
+
+"You must submit three printed and bound copies of your final thesis by the
+submission deadline (to the Examination Office during office hours, in the
+University’s mailing center or by regular mail – it must be postmarked by the deadline)."
+
+Digital -> Email-Adresse? Bekomm ich dann

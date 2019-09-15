@@ -1,0 +1,154 @@
+ - überzeugende Geschichte
+ - wichtigsten Forschungsfragen und Erkenntnisse
+ - Ausblick bereit auf Diskussion vor. Blicke über den Tellerrand
+ - Präsentationsstil, frei sprechen
+ - 30 Min Presi, 15 Min Diskussion (?)
+ - "Die Kolloquium-Präsentation ist ein kleiner Abriss deiner Abschlussarbeit, in der du auf deine Literatur, deine Thesen und Fragestellungen, deine Methodik, Ergebnisse und Schlussfolgerungen eingehst"
+ - Votragensart: zugewandter kontakt, angemessenes Tempo, angemessene Dichte, gute Verstänglichkeit/Wortgebrauch, präziser sprachlicher Ausdruck
+ - Folien: gute strukturiert, gute lesbarkeit, betrag zum verständnis
+ - Zeit beachten!
+ - So wenig Text wie möglich. Vieles mit Symbolen veranschaulichen
+ - Diagramme & Beispiele
+
+
+General Inhalt (inkl. Einleitung): https://www.bachelorprint.de/kolloquium/
+
+
+
+
+1.) Outline
+- Bullet Points for each "chapter"
+
+2.1) Motivation [problemeinführung, motivation, zielsetzung, überblick der related work]
+- Complex stock markets (+deren Zweck anschneiden). Stock prices emerge from rational but also emotional decisions of investors
+-> Investors and therefore the whole market are strongly biased by news reporting, political tension, social media, verbreitete gerüchte
+- Motivation ableiten: Um Investitionen und Kredite für Unternehmen zu bestimmen, betreiben Banken Marktanalyse. Experten schätzen dabei
+  die Situation am Markt ein und folgern daraus ihre Bewertungen. Beispiel: JP Morgan / Standard & Poor's geben Ratings ab (?)
+- Am Markt, hat es sich bereits etabliert, dass Investoren Machine Learning Netzwerke verwenden, um aus einem vordefinierten Set an Information
+  die zukünftige Entwicklung eines Aktienkurses vorrauszusagen. Die Nachfrage nach immer besser werdenden Approaches spiegelt sich auch in der
+  Literatur wieder. Researcher präsentieren immer wieder neue Informationsquellen wie z.B. Twitter oder Forenbeiträge und untersuchen deren
+  Effekt auf die Präzision der Vorhersagen.
+- [2018er Graph Paper erwähnen]
+- Gibt es Aktienkurse, die sich ähnlich zueinander bewegen und ist das einem tieferliegenden Grund verschuldet. Ergo: [hypothese]
+
+2.2) Background/Glossar [kleine einführung in relevante börsenbegriffe/zusammenhänge]
+- Stock price
+- Investor, Bank
+- ???
+- Hypotheses Test
+- my definition: business relationship
+
+2.3) Related Work
+
+3.) Data [datensatz vorstellen]
+
+3.1) Stock Prices
+- 467 Companies from Kaggle (https://www.kaggle.com/dgawlik/nyse) [Originally: Yahoo Finance]
+- 985 trading days from 2010-01-04 to 2013-11-29
+- Others:
+  * GSPC: https://www.kaggle.com/benjibb/sp500-since-1950
+  * VIX: https://www.kaggle.com/lp187q/vix-index-until-jan-202018
+
+3.2) Financial News
+- 542.517 articles (554.914 initially, 12.397 removed)
+- Some visualizations of word distributions, etc.?
+
+
+4.) Approach [methodik, ich könnte mir sehr gut ein großes flussdiagramm der filter, verarbeitungen und tests vorstellen als überblick]
+- every time series is treated as a whole - my "model" does not account for changing relationships
+
+4.1) Measure similarity of time series
+- Show sample based formula
+- For time series, spurious correlation is a common error. In the context of regression also referred to as spurious regression or collinearity
+- Remove causes like autocorrelation (correlation with time) -> ensure stationarity
+- Another cause is an ~exogeneous~ variable which was left out by the design of the experiment but puts a bias on all results. In a scenario like stock market, you cannot erase all influences since some of theme are most likely unknown.
+    Hence, the resulting correlation should be seen as an indicator and therefore treated with caution.
+- Pearson's r requires a stable distribution (ergodic/homogeneous statistics like mean and variance) -> ensure heteroscedasticity
+- It's theory rests on a normal distribution which is rather difficult to ensure. Some Related Work [TODO: Collect References] showed that its results remain stable on normal-like distributions like Student's t [TODO: Find citation].
+    "is conditioned to normal" / "similar *normal* distributions are required for significance tests, confidence intervals, etc"
+    "does not assume normality although it does assume finite variances" ("and finite covariance")
+    For "bivariate normal, Pearson's correlation provides a complete description of the association."
+    "it uses 1) mean values and 2) standard deviations. These measures are not 'robust statistics'"
+- The residuals containing no explainatory behaviour are often referred to as "random" or "white noise". Random ~maybe~ because it appears to be random by looking at this single variable only.
+
+-> Concluding Pearson works but confidence estimation might be not sufficient. More robust is Spearman. I tested Spearman: More conservative results but still significant. All values are just shifted but remain in the same order. Comparing correlation therefore might work.
+
+Refs:
+- Intro on Pearson + Fisher regarding confidence intervals: https://sci-hub.se/https://journals.sagepub.com/doi/10.1177/1536867X0800800307
+- Def. and Theory of Pearson: http://psychclassics.yorku.ca/Fisher/Methods/
+- Pearson should be treated with caution for non-normal: https://www.jstor.org/stable/2346598?seq=11#metadata_info_tab_contents
+- Spearman is robust: https://pdfs.semanticscholar.org/fc43/6b4aed1762e800cb242c8f5f5e99b157d8f0.pdf
+
+TODO: Show example regression line and distributions of Spearman vs Pearson (like in http://geoinfo.amu.edu.pl/qg/archives/2011/QG302_087-093.pdf)
+
+4.1.a)
+- Break down statistical preprocessing in to all chosen steps
+
+4.1.b)
+- Show correlating stock prices
+- backup slide: add spurious correlation
+
+4.2) Text Analysis
+- Named Entity Recognition: Highlight all matches and than only those for organizations
+- Named Entity Linking: Show how the names are matched
+- Focus only on co-occurrences between two companies and show their matches.
+- Calculate distance feature (using Scanline Algorithm)
+
+4.2.a)
+- Example of News Article with working distance
+
+
+5.) Evaluation [beispiele und ergebnisse zeigen]
+- Select a good example working for both features.
+- Show top 5(?) related stocks
+- In order to measure the relation between both custom features, the linear correlationship is measured
+- To validate the meaning, Spearman and Kendall are applied, too
+- Backup: Distribution of variables, scatter plot
+
+
+6.) Diskussion
+- Found evidence for the usefulness of considering business relationship
+  * There is no panacea for stock prices preprocessing but a never ending of constraints and assumptions.
+  * Correlation should always be treated with caution
+- Results are not that strong as expected because the features are possibly biased by noise.
+  Especially news include enumerations of "randomly" chosen stocks which disturbs my measures.
+
+
+
+
+
+Mögliche allgemeine Fragen:
+– Anbindung des Themas an die Praxis, Übertragung einer behandelten Theorie auf andere Forschungsgebiete
+– Stellungnahme zu Kritikpunkten eines Betreuers
+– Persönliche Meinung zu einem in der Arbeit erläuterten Sachverhalt
+– Aufgetretene Probleme bei der Bearbeitung des Themas und rückblickende Evaluierung der eigenen Vorgehensweise
+- Veränderung von Korrelation über Zeit? -> Limitation
+- Was ist Arbitrage
+
+
+
+
+Many variables impact stock Prices
+- GO politics
+- natural desasters
+- interest rates
+- tax rates
+- fiscal program of a government
+- change in the law (e.g. for buybacks, dividends)
+- GDP growth
+- Employment Rate or Jobs Added
+- Expectations
+
+Ingredients that affect the outcome
+
+# Interesting video: https://uk.finance.yahoo.com/news/josh-brown-explain-stock-market-101018079.html
+
+
+
+John Ditchfield (Financial Adviser at Barchester Green):
+"In simple terms it is just a market where buyers and sellers meet in order to trade stocks,"
+
+"There's just too much evidence that our knowledge of what governs financial and economic events is not nearly what we thought it would be."
+
+
+https://www.google.com/search?q=stock+market+investor+vs+company&safe=active&tbm=isch&tbs=rimg:Cbe2M57jPOibIjh1Ol7TfVPKmGLcBanzqxwIFy1AhLOUqpYUSCCpconLAdutKFGRtHaUgiM8dWEqFqPm1gewiGAjBSoSCXU6XtN9U8qYEexIk8FlIlQUKhIJYtwFqfOrHAgR9RV3XqhLGfcqEgkXLUCEs5SqlhHjCamCrlcr-ioSCRRIIKlyicsBEZRsyd5llYdeKhIJ260oUZG0dpQRAypW5AeqDLIqEgmCIzx1YSoWoxEyf9DbllhKsSoSCebWB7CIYCMFEf9n5vELHIHj&tbo=u&sa=X&ved=2ahUKEwjMj7iI5IviAhWuPOwKHYwpAvcQ9C96BAgBEBs&biw=1920&bih=1057&dpr=1
